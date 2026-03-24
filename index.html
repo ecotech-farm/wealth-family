@@ -374,7 +374,7 @@ textarea{resize:vertical;min-height:60px}
       </div>
       <div class="form-group" style="margin-bottom:10px">
         <label class="form-label">Số tiền</label>
-        <input id="tx-amount" type="number" placeholder="0">
+        <input id="tx-amount" type="text" inputmode="numeric" placeholder="0" oninput="formatMoneyInput(this)">
       </div>
       <div class="pill-label">Chọn nhanh</div>
       <div class="pill-group" id="amount-pills">
@@ -407,7 +407,7 @@ textarea{resize:vertical;min-height:60px}
         <div class="card-title">Thêm sổ tiết kiệm</div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Ngân hàng</label><input id="sv-bank" placeholder="VD: Techcombank"></div>
-          <div class="form-group" style="max-width:140px"><label class="form-label">Số tiền gốc</label><input id="sv-amount" type="number" placeholder="0"></div>
+          <div class="form-group" style="max-width:140px"><label class="form-label">Số tiền gốc</label><input id="sv-amount" type="text" inputmode="numeric" placeholder="0" oninput="formatMoneyInput(this)"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Lãi suất (%/năm)</label><input id="sv-rate" type="number" step="0.1" placeholder="5.5"></div>
@@ -462,8 +462,8 @@ textarea{resize:vertical;min-height:60px}
           <button class="pill" onclick="selectInvType('other',this)">Khác</button>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Vốn đầu tư</label><input id="inv-capital" type="number" placeholder="0"></div>
-          <div class="form-group"><label class="form-label">Giá trị hiện tại</label><input id="inv-current" type="number" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Vốn đầu tư</label><input id="inv-capital" type="text" inputmode="numeric" placeholder="0" oninput="formatMoneyInput(this)"></div>
+          <div class="form-group"><label class="form-label">Giá trị hiện tại</label><input id="inv-current" type="text" inputmode="numeric" placeholder="0" oninput="formatMoneyInput(this)"></div>
         </div>
         <button class="btn btn-primary btn-block" onclick="addInvestment()">Thêm vào danh mục</button>
       </div>
@@ -509,7 +509,7 @@ textarea{resize:vertical;min-height:60px}
 
     <div class="form-group" style="margin-bottom:14px">
       <label class="form-label">Thu nhập hàng tháng</label>
-      <input id="setting-income" type="number" placeholder="30000000" onchange="saveSettings()">
+      <input id="setting-income" type="text" inputmode="numeric" placeholder="30.000.000" oninput="formatMoneyInput(this)" onchange="saveSettings()">
     </div>
     <div class="form-group" style="margin-bottom:20px">
       <label class="form-label">Tên gia đình</label>
@@ -746,6 +746,28 @@ const INV_TYPES = {
 };
 
 // ===== UTILITY =====
+// ===== MONEY INPUT FORMAT =====
+function formatMoneyInput(el) {
+  const pos = el.selectionStart;
+  const oldLen = el.value.length;
+  const raw = el.value.replace(/[^\d]/g, '');
+  if (!raw) { el.value = ''; return; }
+  el.value = parseInt(raw).toLocaleString('vi-VN');
+  const newLen = el.value.length;
+  const newPos = Math.max(0, pos + (newLen - oldLen));
+  el.setSelectionRange(newPos, newPos);
+}
+
+function parseMoney(el) {
+  const raw = (typeof el === 'string' ? el : el.value).replace(/[^\d]/g, '');
+  return parseInt(raw) || 0;
+}
+
+function setMoneyValue(id, value) {
+  const el = document.getElementById(id);
+  if (el && value) el.value = parseInt(value).toLocaleString('vi-VN');
+}
+
 function fmt(n) {
   if (n == null || isNaN(n)) return '0';
   const abs = Math.abs(n);
@@ -1157,7 +1179,7 @@ document.getElementById('sub-cat-pills').addEventListener('click', function(e) {
 function selectAmount(amount, el) {
   document.querySelectorAll('#amount-pills .pill').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('tx-amount').value = amount;
+  document.getElementById('tx-amount').value = amount.toLocaleString('vi-VN');
 }
 
 function selectTerm(months, el) {
@@ -1187,7 +1209,7 @@ function toggleTxType() {
 
 function addTransaction() {
   const desc = document.getElementById('tx-desc').value.trim();
-  const amount = parseFloat(document.getElementById('tx-amount').value);
+  const amount = parseMoney(document.getElementById('tx-amount'));
   const category = document.getElementById('tx-category').value;
   const date = document.getElementById('tx-date').value || now();
   if (!desc) { showToast('Vui lòng nhập mô tả giao dịch'); return; }
@@ -1211,7 +1233,7 @@ function deleteTx(id) {
 
 function addSaving() {
   const bank = document.getElementById('sv-bank').value.trim();
-  const amount = parseFloat(document.getElementById('sv-amount').value);
+  const amount = parseMoney(document.getElementById('sv-amount'));
   const rate = parseFloat(document.getElementById('sv-rate').value);
   const term = parseInt(document.getElementById('sv-term').value);
   const startDate = document.getElementById('sv-start').value || now();
@@ -1239,8 +1261,8 @@ function deleteSaving(id) {
 function addInvestment() {
   const name = document.getElementById('inv-name').value.trim();
   const type = document.getElementById('inv-type').value;
-  const capital = parseFloat(document.getElementById('inv-capital').value);
-  const currentValue = parseFloat(document.getElementById('inv-current').value);
+  const capital = parseMoney(document.getElementById('inv-capital'));
+  const currentValue = parseMoney(document.getElementById('inv-current'));
   if (!name) { showToast('Vui lòng nhập tên / mã tài sản'); return; }
   if (!capital || capital <= 0) { showToast('Vui lòng nhập vốn đầu tư'); return; }
 
@@ -1397,7 +1419,7 @@ function switchInvestTab(tab, btn) {
 
 // ===== SETTINGS =====
 function openSettings() {
-  document.getElementById('setting-income').value = DATA.settings.monthlyIncome;
+  document.getElementById('setting-income').value = DATA.settings.monthlyIncome.toLocaleString('vi-VN');
   document.getElementById('setting-family').value = DATA.settings.familyName;
 
   // Load Firebase config
@@ -1412,7 +1434,7 @@ function openSettings() {
 }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('show'); }
 function saveSettings() {
-  DATA.settings.monthlyIncome = parseFloat(document.getElementById('setting-income').value) || 30000000;
+  DATA.settings.monthlyIncome = parseMoney(document.getElementById('setting-income')) || 30000000;
   DATA.settings.familyName = document.getElementById('setting-family').value || 'Gia đình';
   saveData(DATA);
   renderAll();
