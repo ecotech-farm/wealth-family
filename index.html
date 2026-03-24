@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WEALTH — Tài Chính Gia Đình Thông Minh</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0C0C0E;--bg2:#131316;--bg3:#1a1a1f;--bg4:#222228;
+  --gold:#C4963C;--gold2:#d4a94e;--gold3:#e0bd6a;--gold-dim:rgba(196,150,60,.12);
+  --gold-glow:rgba(196,150,60,.08);
+  --text:#e8e4dc;--text2:#a09a8e;--text3:#6b6660;
+  --green:#4ade80;--green-dim:rgba(74,222,128,.12);
+  --red:#f87171;--red-dim:rgba(248,113,113,.12);
+  --yellow:#fbbf24;--yellow-dim:rgba(251,191,36,.12);
+  --blue:#60a5fa;--blue-dim:rgba(96,165,250,.12);
+  --purple:#a78bfa;--purple-dim:rgba(167,139,250,.12);
+  --pink:#f472b6;--pink-dim:rgba(244,114,182,.12);
+  --radius:12px;--radius-sm:8px;
+  --font-num:'Cormorant Garamond',serif;
+  --font-body:'Jost',sans-serif;
+  --transition:all .25s ease;
+}
+html{font-size:16px;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-weight:300;min-height:100vh;overflow-x:hidden}
+::selection{background:var(--gold);color:var(--bg)}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--gold-dim)}
+
+/* Layout */
+.app{max-width:760px;margin:0 auto;padding:16px 16px 100px}
+.header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px}
+.logo{font-family:var(--font-num);font-size:1.5rem;font-weight:600;color:var(--gold);letter-spacing:2px}
+.logo span{font-weight:300;color:var(--text2);font-size:.85rem;letter-spacing:0;margin-left:8px;font-family:var(--font-body)}
+.header-right{display:flex;align-items:center;gap:10px}
+.sync-indicator{display:flex;align-items:center;gap:6px;font-size:.7rem;color:var(--text3);padding:6px 12px;border-radius:20px;background:var(--bg2);border:1px solid rgba(255,255,255,.04)}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sync-dot.connected{background:var(--green);box-shadow:0 0 6px var(--green)}
+.sync-dot.offline{background:var(--text3)}
+.sync-dot.syncing{background:var(--yellow);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.settings-btn{background:none;border:1px solid var(--bg4);color:var(--text2);width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--transition)}
+.settings-btn:hover{border-color:var(--gold);color:var(--gold)}
+.settings-btn svg{width:18px;height:18px}
+
+/* Nav pills */
+.nav{display:flex;gap:4px;background:var(--bg2);border-radius:28px;padding:4px;margin-bottom:20px;position:sticky;top:8px;z-index:100;border:1px solid rgba(255,255,255,.04)}
+.nav button{flex:1;padding:10px 6px;border:none;background:none;color:var(--text3);font-family:var(--font-body);font-size:.8rem;font-weight:400;border-radius:24px;cursor:pointer;transition:var(--transition);white-space:nowrap;letter-spacing:.3px}
+.nav button.active{background:var(--gold);color:var(--bg);font-weight:500}
+.nav button:not(.active):hover{color:var(--text)}
+
+/* Panels */
+.panel{display:none;animation:fadeUp .35s ease both}
+.panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* KPI strip */
+.kpi-strip{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+.kpi-card{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:var(--radius);padding:16px;transition:var(--transition)}
+.kpi-card:hover{border-color:var(--gold-dim);box-shadow:0 0 20px var(--gold-glow)}
+.kpi-label{font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.kpi-value{font-family:var(--font-num);font-size:1.6rem;font-weight:500;color:var(--text);line-height:1.1}
+.kpi-value.positive{color:var(--green)}
+.kpi-value.negative{color:var(--red)}
+.kpi-sub{font-size:.7rem;color:var(--text3);margin-top:4px}
+
+/* Cards */
+.card{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:var(--radius);padding:20px;margin-bottom:14px;transition:var(--transition)}
+.card:hover{border-color:var(--gold-dim);box-shadow:0 0 24px var(--gold-glow)}
+.card-title{font-size:.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.card-title .badge{font-size:.65rem;padding:3px 8px;border-radius:10px;letter-spacing:0;text-transform:none}
+
+/* Alert banner */
+.alert-banner{background:var(--red-dim);border:1px solid rgba(248,113,113,.2);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px}
+.alert-banner.warn{background:var(--yellow-dim);border-color:rgba(251,191,36,.2)}
+.alert-icon{width:18px;height:18px;flex-shrink:0;margin-top:1px}
+.alert-text{font-size:.82rem;color:var(--text);line-height:1.5}
+.alert-text strong{color:var(--red);font-weight:500}
+.alert-banner.warn .alert-text strong{color:var(--yellow)}
+
+/* Chart */
+.chart-container{position:relative;height:200px;margin-bottom:6px}
+.chart-bars{display:flex;align-items:flex-end;gap:6px;height:170px;padding:0 4px}
+.chart-month{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.chart-pair{display:flex;gap:2px;align-items:flex-end;width:100%;height:150px}
+.chart-bar{flex:1;border-radius:4px 4px 0 0;min-height:2px;transition:height .5s ease}
+.chart-bar.income{background:var(--green)}
+.chart-bar.expense{background:var(--red)}
+.chart-label{font-size:.65rem;color:var(--text3);margin-top:6px}
+.chart-legend{display:flex;gap:16px;justify-content:center;margin-top:8px}
+.chart-legend span{font-size:.7rem;color:var(--text3);display:flex;align-items:center;gap:5px}
+.chart-legend span::before{content:'';width:10px;height:10px;border-radius:2px;display:block}
+.chart-legend .l-income::before{background:var(--green)}
+.chart-legend .l-expense::before{background:var(--red)}
+
+/* Transactions */
+.tx-list{display:flex;flex-direction:column;gap:2px}
+.tx-item{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.tx-item:last-child{border-bottom:none}
+.tx-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0}
+.tx-icon svg{width:16px;height:16px}
+.tx-info{flex:1;min-width:0}
+.tx-name{font-size:.85rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-cat{font-size:.7rem;color:var(--text3);margin-top:2px}
+.tx-amount{font-family:var(--font-num);font-size:1rem;font-weight:500;text-align:right}
+.tx-amount.income{color:var(--green)}
+.tx-amount.expense{color:var(--red)}
+.tx-date{font-size:.65rem;color:var(--text3);text-align:right;margin-top:2px}
+
+/* Budget bars */
+.budget-group{margin-bottom:16px}
+.budget-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.budget-name{font-size:.82rem;color:var(--text);display:flex;align-items:center;gap:8px}
+.budget-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.budget-status.good{background:var(--green)}
+.budget-status.warn{background:var(--yellow)}
+.budget-status.over{background:var(--red)}
+.budget-pct{font-family:var(--font-num);font-size:.9rem;font-weight:500;color:var(--text2)}
+.budget-track{height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;position:relative}
+.budget-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.budget-target{position:absolute;top:0;height:100%;border-right:2px dashed rgba(255,255,255,.2)}
+.budget-details{display:flex;justify-content:space-between;margin-top:5px;font-size:.7rem;color:var(--text3)}
+.budget-warn-text{font-size:.75rem;margin-top:4px;padding:6px 10px;border-radius:var(--radius-sm)}
+.budget-warn-text.over{color:var(--red);background:var(--red-dim)}
+.budget-warn-text.warn{color:var(--yellow);background:var(--yellow-dim)}
+
+/* Form */
+.form-row{display:flex;gap:8px;margin-bottom:10px}
+.form-group{flex:1;display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+input,select,textarea{background:var(--bg3);border:1px solid var(--bg4);color:var(--text);font-family:var(--font-body);font-size:.85rem;padding:10px 12px;border-radius:var(--radius-sm);outline:none;transition:var(--transition);width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b6660' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+textarea{resize:vertical;min-height:60px}
+.btn{font-family:var(--font-body);font-weight:400;font-size:.82rem;padding:10px 20px;border:none;border-radius:24px;cursor:pointer;transition:var(--transition);letter-spacing:.3px}
+.btn-primary{background:var(--gold);color:var(--bg)}
+.btn-primary:hover{background:var(--gold2);box-shadow:0 0 20px var(--gold-dim)}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--bg4)}
+.btn-secondary:hover{border-color:var(--gold);color:var(--gold)}
+.btn-sm{padding:7px 14px;font-size:.75rem}
+.btn-block{width:100%;text-align:center}
+
+/* Tabs inside panels */
+.tabs{display:flex;gap:2px;margin-bottom:16px}
+.tabs button{flex:1;padding:8px;background:var(--bg3);border:1px solid transparent;color:var(--text3);font-family:var(--font-body);font-size:.78rem;border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition)}
+.tabs button.active{background:var(--gold-dim);color:var(--gold);border-color:rgba(196,150,60,.2)}
+
+/* Savings */
+.saving-item{display:flex;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.saving-item:last-child{border-bottom:none}
+.saving-info{flex:1}
+.saving-bank{font-size:.85rem;color:var(--text)}
+.saving-meta{font-size:.7rem;color:var(--text3);margin-top:3px;display:flex;gap:12px}
+.saving-progress{width:120px;margin:0 16px}
+.saving-bar{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden}
+.saving-bar-fill{height:100%;background:var(--gold);border-radius:2px}
+.saving-pct{font-size:.65rem;color:var(--text3);text-align:center;margin-top:3px}
+.saving-right{text-align:right}
+.saving-amount{font-family:var(--font-num);font-size:1rem;font-weight:500;color:var(--gold)}
+.saving-interest{font-size:.7rem;color:var(--green);margin-top:2px}
+.saving-status{font-size:.65rem;padding:2px 8px;border-radius:8px;margin-top:3px;display:inline-block}
+.saving-status.active{background:var(--green-dim);color:var(--green)}
+.saving-status.matured{background:var(--yellow-dim);color:var(--yellow)}
+
+/* Investment */
+.inv-item{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.inv-item:last-child{border-bottom:none}
+.inv-type-badge{font-size:.6rem;padding:2px 8px;border-radius:8px;margin-right:12px;font-weight:500;letter-spacing:.3px;white-space:nowrap}
+.inv-info{flex:1}
+.inv-name{font-size:.85rem;color:var(--text)}
+.inv-capital{font-size:.7rem;color:var(--text3);margin-top:2px}
+.inv-right{text-align:right}
+.inv-value{font-family:var(--font-num);font-size:1rem;font-weight:500;color:var(--text)}
+.inv-pnl{font-size:.78rem;margin-top:2px;font-weight:400}
+.inv-pnl.positive{color:var(--green)}
+.inv-pnl.negative{color:var(--red)}
+
+/* AI Chat */
+.ai-messages{max-height:400px;overflow-y:auto;margin-bottom:14px;display:flex;flex-direction:column;gap:10px}
+.ai-msg{padding:12px 16px;border-radius:var(--radius);font-size:.85rem;line-height:1.6;max-width:92%}
+.ai-msg.user{background:var(--gold-dim);color:var(--gold3);align-self:flex-end;border:1px solid rgba(196,150,60,.15)}
+.ai-msg.assistant{background:var(--bg3);color:var(--text);align-self:flex-start;border:1px solid rgba(255,255,255,.04)}
+.ai-msg.assistant p{margin-bottom:8px}
+.ai-msg.assistant p:last-child{margin-bottom:0}
+.ai-msg.assistant strong{color:var(--gold)}
+.ai-msg.assistant ul,.ai-msg.assistant ol{padding-left:18px;margin:6px 0}
+.ai-msg.assistant li{margin-bottom:4px}
+.ai-suggestions{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.ai-suggest-btn{background:var(--bg3);border:1px solid var(--bg4);color:var(--text2);font-family:var(--font-body);font-size:.78rem;padding:10px 14px;border-radius:var(--radius-sm);cursor:pointer;text-align:left;transition:var(--transition)}
+.ai-suggest-btn:hover{border-color:var(--gold);color:var(--gold)}
+.ai-input-row{display:flex;gap:8px}
+.ai-input-row input{flex:1}
+.ai-typing{display:flex;gap:4px;padding:12px 16px;align-self:flex-start}
+.ai-typing span{width:6px;height:6px;background:var(--text3);border-radius:50%;animation:blink 1.2s infinite}
+.ai-typing span:nth-child(2){animation-delay:.2s}
+.ai-typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{opacity:.3}30%{opacity:1}}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg2);border:1px solid rgba(255,255,255,.06);border-radius:20px 20px 0 0;width:100%;max-width:760px;max-height:85vh;overflow-y:auto;padding:24px 20px 32px;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;background:var(--bg4);border-radius:2px;margin:0 auto 16px}
+.modal h3{font-family:var(--font-num);font-size:1.1rem;font-weight:500;color:var(--gold);margin-bottom:16px}
+
+/* Settings modal */
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.setting-label{font-size:.85rem;color:var(--text)}
+.setting-desc{font-size:.7rem;color:var(--text3);margin-top:2px}
+.section-divider{border:none;border-top:1px solid rgba(196,150,60,.15);margin:18px 0 14px}
+.section-title{font-size:.72rem;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title::after{content:'';flex:1;height:1px;background:rgba(196,150,60,.15)}
+
+/* Delete btn */
+.delete-btn{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;border-radius:4px;transition:var(--transition);opacity:0}
+.tx-item:hover .delete-btn,.saving-item:hover .delete-btn,.inv-item:hover .delete-btn{opacity:1}
+.delete-btn:hover{color:var(--red)}
+.delete-btn svg{width:14px;height:14px}
+
+/* Empty state */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:.85rem}
+.empty-state svg{width:48px;height:48px;margin-bottom:12px;opacity:.3}
+
+/* Responsive */
+@media(max-width:400px){
+  .kpi-value{font-size:1.3rem}
+  .nav button{font-size:.72rem;padding:8px 4px}
+  .sync-indicator span{display:none}
+}
+
+/* Investment type colors */
+.inv-type-stock{background:var(--blue-dim);color:var(--blue)}
+.inv-type-crypto{background:var(--purple-dim);color:var(--purple)}
+.inv-type-realestate{background:var(--green-dim);color:var(--green)}
+.inv-type-etf{background:var(--yellow-dim);color:var(--yellow)}
+.inv-type-bond{background:var(--gold-dim);color:var(--gold)}
+.inv-type-gold{background:rgba(234,179,8,.12);color:#eab308}
+.inv-type-other{background:var(--pink-dim);color:var(--pink)}
+
+/* Budget category colors */
+.cat-essential{background:var(--blue)}
+.cat-saving{background:var(--green)}
+.cat-emergency{background:var(--yellow)}
+.cat-education{background:var(--purple)}
+.cat-entertainment{background:var(--pink)}
+.cat-giving{background:var(--gold)}
+
+/* Total row */
+.total-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-top:1px solid rgba(196,150,60,.15);margin-top:4px}
+.total-label{font-size:.8rem;color:var(--gold);font-weight:400}
+.total-value{font-family:var(--font-num);font-size:1.1rem;font-weight:500;color:var(--gold)}
+
+/* Responsive grid for larger screens within 760 */
+@media(min-width:500px){
+  .kpi-strip{grid-template-columns:repeat(4,1fr)}
+}
+
+/* Firebase setup guide */
+.setup-steps{font-size:.78rem;color:var(--text2);line-height:1.7;margin:10px 0}
+.setup-steps li{margin-bottom:4px}
+.setup-steps code{background:var(--bg4);padding:2px 6px;border-radius:4px;font-size:.72rem;color:var(--gold)}
+.fb-status{font-size:.72rem;padding:4px 10px;border-radius:8px;display:inline-block;margin-top:8px}
+.fb-status.connected{background:var(--green-dim);color:var(--green)}
+.fb-status.disconnected{background:var(--red-dim);color:var(--red)}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">WEALTH<span>Tai chinh gia dinh</span></div>
+    <div class="header-right">
+      <div class="sync-indicator" id="sync-status">
+        <div class="sync-dot offline" id="sync-dot"></div>
+        <span>Offline</span>
+      </div>
+      <button class="settings-btn" onclick="openSettings()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <button class="active" onclick="switchPanel('overview',this)">Tong quan</button>
+    <button onclick="switchPanel('spending',this)">Chi tieu</button>
+    <button onclick="switchPanel('invest',this)">Dau tu</button>
+    <button onclick="switchPanel('ai',this)">AI Tu van</button>
+  </nav>
+
+  <!-- Panel 1: Overview -->
+  <div id="panel-overview" class="panel active">
+    <div class="kpi-strip" id="kpi-strip"></div>
+    <div id="budget-alerts"></div>
+    <div class="card">
+      <div class="card-title">Dong tien 6 thang</div>
+      <div class="chart-container">
+        <div class="chart-bars" id="cashflow-chart"></div>
+      </div>
+      <div class="chart-legend">
+        <span class="l-income">Thu nhap</span>
+        <span class="l-expense">Chi tieu</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Giao dich gan nhat</div>
+      <div class="tx-list" id="recent-tx"></div>
+    </div>
+  </div>
+
+  <!-- Panel 2: Spending -->
+  <div id="panel-spending" class="panel">
+    <div class="card">
+      <div class="card-title">Phan bo ngan sach theo mo hinh 6 nhom</div>
+      <div id="budget-bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        Nhap giao dich
+        <button class="btn btn-sm btn-secondary" onclick="toggleTxType()" id="tx-type-btn">Chi tieu</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Mo ta</label>
+          <input id="tx-desc" placeholder="VD: Tien cho, Tien nha...">
+        </div>
+        <div class="form-group" style="max-width:140px">
+          <label class="form-label">So tien</label>
+          <input id="tx-amount" type="number" placeholder="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Danh muc</label>
+          <select id="tx-category">
+            <option value="Chi tieu thiet yeu">Chi tieu thiet yeu</option>
+            <option value="Tiet kiem & Dau tu">Tiet kiem & Dau tu</option>
+            <option value="Quy du phong">Quy du phong khan cap</option>
+            <option value="Giao duc">Giao duc & Phat trien</option>
+            <option value="Huong thu">Huong thu & Giai tri</option>
+            <option value="Cho di & Xa hoi">Cho di & Xa hoi</option>
+          </select>
+        </div>
+        <div class="form-group" style="max-width:140px">
+          <label class="form-label">Ngay</label>
+          <input id="tx-date" type="date">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="addTransaction()">Them giao dich</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Tat ca giao dich thang nay</div>
+      <div class="tx-list" id="all-tx"></div>
+    </div>
+  </div>
+
+  <!-- Panel 3: Investment -->
+  <div id="panel-invest" class="panel">
+    <div class="tabs">
+      <button class="active" onclick="switchInvestTab('savings',this)">Tiet kiem ngan hang</button>
+      <button onclick="switchInvestTab('portfolio',this)">Danh muc dau tu</button>
+    </div>
+
+    <div id="tab-savings">
+      <div class="card">
+        <div class="card-title">Them so tiet kiem</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Ngan hang</label><input id="sv-bank" placeholder="VD: Techcombank"></div>
+          <div class="form-group" style="max-width:140px"><label class="form-label">So tien goc</label><input id="sv-amount" type="number" placeholder="0"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Lai suat (%/nam)</label><input id="sv-rate" type="number" step="0.1" placeholder="5.5"></div>
+          <div class="form-group"><label class="form-label">Ky han (thang)</label><input id="sv-term" type="number" placeholder="12"></div>
+          <div class="form-group"><label class="form-label">Ngay gui</label><input id="sv-start" type="date"></div>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="addSaving()">Them so tiet kiem</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Danh sach so tiet kiem</div>
+        <div id="savings-list"></div>
+        <div class="total-row" id="savings-total" style="display:none">
+          <span class="total-label">Tong tiet kiem</span>
+          <span class="total-value" id="savings-total-value"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-portfolio" style="display:none">
+      <div class="card">
+        <div class="card-title">Them tai san dau tu</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Ten / Ma</label><input id="inv-name" placeholder="VD: VNM, BTC"></div>
+          <div class="form-group">
+            <label class="form-label">Loai</label>
+            <select id="inv-type">
+              <option value="stock">Co phieu</option>
+              <option value="crypto">Crypto</option>
+              <option value="realestate">Bat dong san</option>
+              <option value="etf">ETF</option>
+              <option value="bond">Trai phieu</option>
+              <option value="gold">Vang</option>
+              <option value="other">Khac</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Von dau tu</label><input id="inv-capital" type="number" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Gia tri hien tai</label><input id="inv-current" type="number" placeholder="0"></div>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="addInvestment()">Them tai san</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Danh muc dau tu</div>
+        <div id="portfolio-list"></div>
+        <div class="total-row" id="portfolio-total" style="display:none">
+          <span class="total-label">Tong gia tri</span>
+          <span class="total-value" id="portfolio-total-value"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel 4: AI -->
+  <div id="panel-ai" class="panel">
+    <div class="card" id="ai-alert-card" style="display:none"></div>
+    <div class="card">
+      <div class="card-title">Co van tai chinh AI</div>
+      <div class="ai-messages" id="ai-messages"></div>
+      <div class="ai-suggestions" id="ai-suggestions"></div>
+      <div class="ai-input-row">
+        <input id="ai-input" placeholder="Hoi ve tai chinh gia dinh..." onkeydown="if(event.key==='Enter')sendAI()">
+        <button class="btn btn-primary" onclick="sendAI()">Gui</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Cai dat API</div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label class="form-label">Claude API Key</label>
+        <input id="api-key" type="password" placeholder="sk-ant-..." onchange="saveApiKey()">
+      </div>
+      <p style="font-size:.7rem;color:var(--text3)">Key duoc luu cuc bo tren trinh duyet, khong gui den ben thu ba.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Cai dat</h3>
+
+    <div class="form-group" style="margin-bottom:14px">
+      <label class="form-label">Thu nhap hang thang</label>
+      <input id="setting-income" type="number" placeholder="30000000" onchange="saveSettings()">
+    </div>
+    <div class="form-group" style="margin-bottom:20px">
+      <label class="form-label">Ten gia dinh</label>
+      <input id="setting-family" placeholder="Gia dinh Nguyen" onchange="saveSettings()">
+    </div>
+
+    <!-- Firebase Sync Section -->
+    <hr class="section-divider">
+    <div class="section-title">Dong bo gia dinh (Firebase)</div>
+
+    <div id="fb-setup-guide" class="card" style="background:var(--bg3);margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:8px">Huong dan thiet lap (1 lan duy nhat)</div>
+      <ol class="setup-steps">
+        <li>Vao <strong><a href="https://console.firebase.google.com" target="_blank" style="color:var(--gold)">console.firebase.google.com</a></strong></li>
+        <li>Tao project moi (ten tuy y, VD: "wealth-family")</li>
+        <li>Vao <strong>Build > Realtime Database</strong> > Create Database</li>
+        <li>Chon location <code>asia-southeast1</code> > Start in <strong>test mode</strong></li>
+        <li>Copy URL database (VD: <code>https://xxx.firebaseio.com</code>)</li>
+        <li>Vao <strong>Project Settings</strong> (icon banh rang) > General > copy <code>API Key</code></li>
+        <li>Dien 3 truong ben duoi > bam <strong>Ket noi</strong></li>
+      </ol>
+    </div>
+
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Firebase Database URL</label>
+      <input id="fb-url" placeholder="https://your-project.firebaseio.com">
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Firebase API Key</label>
+      <input id="fb-apikey" placeholder="AIzaSy...">
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label class="form-label">Ma gia dinh (ca 2 vo chong nhap giong nhau)</label>
+      <input id="fb-family-code" placeholder="VD: nguyen-family-2024">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="connectFirebase()">Ket noi Firebase</button>
+    <div id="fb-connection-status"></div>
+
+    <hr class="section-divider">
+
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" style="flex:1" onclick="exportData()">Xuat du lieu</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="importDataClick()">Nhap du lieu</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn btn-secondary btn-block" style="color:var(--red);border-color:rgba(248,113,113,.2)" onclick="resetAllData()">Xoa toan bo du lieu</button>
+    </div>
+    <div style="margin-top:16px;text-align:center">
+      <button class="btn btn-primary" onclick="closeSettings()">Dong</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== DATA LAYER =====
+const STORAGE_KEY = 'wealth_data';
+const FB_CONFIG_KEY = 'wealth_firebase_config';
+const DEFAULT_DATA = {
+  settings: { monthlyIncome: 30000000, familyName: 'Gia dinh' },
+  transactions: [],
+  savings: [],
+  investments: [],
+  aiMessages: [],
+  apiKey: '',
+  _lastModified: 0
+};
+
+function loadData() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || structuredClone(DEFAULT_DATA); }
+  catch { return structuredClone(DEFAULT_DATA); }
+}
+
+let DATA = loadData();
+
+// ===== FIREBASE SYNC =====
+let fbRef = null;
+let fbConnected = false;
+
+function loadFbConfig() {
+  try { return JSON.parse(localStorage.getItem(FB_CONFIG_KEY)); }
+  catch { return null; }
+}
+
+function saveFbConfig(config) {
+  localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(config));
+}
+
+function saveData(d) {
+  d._lastModified = Date.now();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+  if (fbRef && fbConnected) {
+    const syncData = { ...d };
+    delete syncData.apiKey; // don't sync API keys
+    fbRef.set(syncData).catch(e => {
+      console.error('Firebase write error:', e);
+      updateSyncStatus('error');
+    });
+  }
+}
+
+function initFirebase() {
+  const config = loadFbConfig();
+  if (!config || !config.databaseURL || !config.familyCode) return;
+
+  try {
+    if (firebase.apps.length) {
+      firebase.app().delete().then(() => startFirebase(config));
+    } else {
+      startFirebase(config);
+    }
+  } catch (e) {
+    console.error('Firebase init error:', e);
+  }
+}
+
+function startFirebase(config) {
+  try {
+    firebase.initializeApp({
+      apiKey: config.apiKey || 'dummy-key',
+      databaseURL: config.databaseURL
+    });
+
+    const db = firebase.database();
+    const familyCode = config.familyCode.replace(/[.#$/\[\]]/g, '-');
+    fbRef = db.ref('families/' + familyCode);
+
+    // Connection state
+    db.ref('.info/connected').on('value', (snap) => {
+      fbConnected = snap.val() === true;
+      updateSyncStatus(fbConnected ? 'connected' : 'offline');
+    });
+
+    // Listen for realtime changes
+    fbRef.on('value', (snapshot) => {
+      const remote = snapshot.val();
+      if (!remote) {
+        // First time - push local data to Firebase
+        saveData(DATA);
+        return;
+      }
+      // Only update if remote is newer
+      if ((remote._lastModified || 0) > (DATA._lastModified || 0)) {
+        const localApiKey = DATA.apiKey;
+        DATA = { ...DEFAULT_DATA, ...remote, apiKey: localApiKey };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+        renderAll();
+      }
+    });
+
+    updateSyncStatus('connected');
+  } catch (e) {
+    console.error('Firebase start error:', e);
+    updateSyncStatus('error');
+  }
+}
+
+function updateSyncStatus(status) {
+  const dot = document.getElementById('sync-dot');
+  const indicator = document.getElementById('sync-status');
+  if (!dot || !indicator) return;
+
+  dot.className = 'sync-dot';
+  if (status === 'connected') {
+    dot.classList.add('connected');
+    indicator.querySelector('span').textContent = 'Sync';
+  } else if (status === 'syncing') {
+    dot.classList.add('syncing');
+    indicator.querySelector('span').textContent = 'Dang dong bo...';
+  } else if (status === 'error') {
+    dot.classList.add('offline');
+    indicator.querySelector('span').textContent = 'Loi ket noi';
+  } else {
+    dot.classList.add('offline');
+    indicator.querySelector('span').textContent = 'Offline';
+  }
+}
+
+function connectFirebase() {
+  const url = document.getElementById('fb-url').value.trim();
+  const apiKey = document.getElementById('fb-apikey').value.trim();
+  const familyCode = document.getElementById('fb-family-code').value.trim();
+
+  if (!url || !familyCode) {
+    document.getElementById('fb-connection-status').innerHTML =
+      '<div class="fb-status disconnected">Can nhap Database URL va Ma gia dinh</div>';
+    return;
+  }
+
+  const config = { databaseURL: url, apiKey, familyCode };
+  saveFbConfig(config);
+
+  // Disconnect existing
+  if (fbRef) {
+    fbRef.off();
+    fbRef = null;
+  }
+  if (firebase.apps.length) {
+    firebase.app().delete().then(() => {
+      startFirebase(config);
+      document.getElementById('fb-connection-status').innerHTML =
+        '<div class="fb-status connected">Da ket noi thanh cong! Ca 2 thiet bi dung cung ma gia dinh se dong bo realtime.</div>';
+    });
+  } else {
+    startFirebase(config);
+    document.getElementById('fb-connection-status').innerHTML =
+      '<div class="fb-status connected">Da ket noi thanh cong! Ca 2 thiet bi dung cung ma gia dinh se dong bo realtime.</div>';
+  }
+}
+
+// ===== BUDGET TARGETS =====
+const BUDGET_TARGETS = {
+  'Chi tieu thiet yeu': { min: 0.50, max: 0.55, color: 'var(--blue)', colorClass: 'cat-essential', label: 'Chi tieu thiet yeu' },
+  'Tiet kiem & Dau tu': { min: 0.10, max: 0.20, color: 'var(--green)', colorClass: 'cat-saving', label: 'Tiet kiem & Dau tu' },
+  'Quy du phong': { min: 0.05, max: 0.10, color: 'var(--yellow)', colorClass: 'cat-emergency', label: 'Quy du phong khan cap' },
+  'Giao duc': { min: 0.08, max: 0.12, color: 'var(--purple)', colorClass: 'cat-education', label: 'Giao duc & Phat trien' },
+  'Huong thu': { min: 0.08, max: 0.12, color: 'var(--pink)', colorClass: 'cat-entertainment', label: 'Huong thu & Giai tri' },
+  'Cho di & Xa hoi': { min: 0.03, max: 0.07, color: 'var(--gold)', colorClass: 'cat-giving', label: 'Cho di & Xa hoi' },
+};
+
+const INV_TYPES = {
+  stock: 'Co phieu', crypto: 'Crypto', realestate: 'BDS',
+  etf: 'ETF', bond: 'Trai phieu', gold: 'Vang', other: 'Khac'
+};
+
+// ===== UTILITY =====
+function fmt(n) {
+  if (n == null || isNaN(n)) return '0';
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+  if (abs >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (abs >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return n.toLocaleString('vi-VN');
+}
+function fmtFull(n) { return (n || 0).toLocaleString('vi-VN') + ' d'; }
+function fmtDate(d) { const dt = new Date(d); return dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }); }
+function now() { return new Date().toISOString().slice(0, 10); }
+function thisMonth() { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+function getMonthlyTx(y, m) {
+  return DATA.transactions.filter(t => {
+    const d = new Date(t.date);
+    return d.getFullYear() === y && d.getMonth() === m;
+  });
+}
+
+function getCategorySpending(txList) {
+  const totals = {};
+  Object.keys(BUDGET_TARGETS).forEach(k => totals[k] = 0);
+  txList.filter(t => t.type === 'expense').forEach(t => {
+    if (totals[t.category] !== undefined) totals[t.category] += t.amount;
+  });
+  return totals;
+}
+
+function getBudgetStatus(spent, income, cat) {
+  const target = BUDGET_TARGETS[cat];
+  const pct = income > 0 ? spent / income : 0;
+  if (pct > target.max) return 'over';
+  if (pct > target.max * 0.85) return 'warn';
+  return 'good';
+}
+
+// ===== DELETE ICON =====
+const deleteIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>`;
+
+// ===== RENDER: OVERVIEW =====
+function renderOverview() {
+  const { y, m } = thisMonth();
+  const txMonth = getMonthlyTx(y, m);
+  const incomeMonth = txMonth.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const expenseMonth = txMonth.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
+  const totalSavings = DATA.savings.reduce((s, v) => s + v.amount, 0);
+  const totalInvest = DATA.investments.reduce((s, v) => s + v.currentValue, 0);
+  const netWorth = totalSavings + totalInvest + (incomeMonth - expenseMonth);
+
+  document.getElementById('kpi-strip').innerHTML = [
+    { label: 'Tai san rong', value: fmt(netWorth), cls: '', sub: fmtFull(netWorth) },
+    { label: 'Thu nhap thang', value: fmt(incomeMonth || DATA.settings.monthlyIncome), cls: 'positive', sub: fmtFull(incomeMonth || DATA.settings.monthlyIncome) },
+    { label: 'Chi tieu thang', value: fmt(expenseMonth), cls: 'negative', sub: fmtFull(expenseMonth) },
+    { label: 'Tiet kiem + DT', value: fmt(totalSavings + totalInvest), cls: '', sub: fmtFull(totalSavings + totalInvest) },
+  ].map(k => `
+    <div class="kpi-card">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value ${k.cls}">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>
+  `).join('');
+
+  // Budget alerts
+  const spending = getCategorySpending(txMonth);
+  const income = incomeMonth || DATA.settings.monthlyIncome;
+  let alertsHtml = '';
+  Object.keys(BUDGET_TARGETS).forEach(cat => {
+    const status = getBudgetStatus(spending[cat], income, cat);
+    const target = BUDGET_TARGETS[cat];
+    if (status === 'over') {
+      const over = spending[cat] - (target.max * income);
+      alertsHtml += `
+        <div class="alert-banner">
+          <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div class="alert-text"><strong>${target.label}</strong> vuot ${fmt(over)} — dang o ${(spending[cat] / income * 100).toFixed(0)}% thu nhap (muc tieu <=${(target.max * 100).toFixed(0)}%)</div>
+        </div>`;
+    } else if (status === 'warn') {
+      alertsHtml += `
+        <div class="alert-banner warn">
+          <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div class="alert-text"><strong>${target.label}</strong> gan vuot muc tieu — ${(spending[cat] / income * 100).toFixed(0)}% thu nhap</div>
+        </div>`;
+    }
+  });
+  document.getElementById('budget-alerts').innerHTML = alertsHtml;
+
+  renderCashflowChart();
+
+  const recent = [...DATA.transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
+  document.getElementById('recent-tx').innerHTML = recent.length ? recent.map(t => txItemHtml(t)).join('') :
+    '<div class="empty-state">Chua co giao dich nao</div>';
+}
+
+function renderCashflowChart() {
+  const months = [];
+  const d = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const md = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    months.push({ y: md.getFullYear(), m: md.getMonth(), label: `T${md.getMonth() + 1}` });
+  }
+  const monthData = months.map(({ y, m, label }) => {
+    const tx = getMonthlyTx(y, m);
+    const inc = tx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const exp = tx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    return { label, inc, exp };
+  });
+  const maxVal = Math.max(...monthData.map(d => Math.max(d.inc, d.exp)), 1);
+
+  document.getElementById('cashflow-chart').innerHTML = monthData.map(d => `
+    <div class="chart-month">
+      <div class="chart-pair">
+        <div class="chart-bar income" style="height:${(d.inc / maxVal * 140)}px" title="Thu: ${fmtFull(d.inc)}"></div>
+        <div class="chart-bar expense" style="height:${(d.exp / maxVal * 140)}px" title="Chi: ${fmtFull(d.exp)}"></div>
+      </div>
+      <div class="chart-label">${d.label}</div>
+    </div>
+  `).join('');
+}
+
+function txItemHtml(t) {
+  const catTarget = BUDGET_TARGETS[t.category];
+  const color = catTarget ? catTarget.color : 'var(--text3)';
+  return `
+    <div class="tx-item">
+      <div class="tx-icon" style="background:${color}22">
+        <svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2">
+          ${t.type === 'income'
+            ? '<path d="M12 19V5M5 12l7-7 7 7"/>'
+            : '<path d="M12 5v14M5 12l7 7 7-7"/>'}
+        </svg>
+      </div>
+      <div class="tx-info">
+        <div class="tx-name">${t.desc}</div>
+        <div class="tx-cat">${catTarget ? catTarget.label : t.category}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="tx-amount ${t.type}">${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}</div>
+        <div class="tx-date">${fmtDate(t.date)}</div>
+      </div>
+      <button class="delete-btn" onclick="deleteTx('${t.id}')" title="Xoa">${deleteIcon}</button>
+    </div>`;
+}
+
+// ===== RENDER: SPENDING =====
+function renderSpending() {
+  const { y, m } = thisMonth();
+  const txMonth = getMonthlyTx(y, m);
+  const incomeMonth = txMonth.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0) || DATA.settings.monthlyIncome;
+  const spending = getCategorySpending(txMonth);
+
+  let html = '';
+  Object.entries(BUDGET_TARGETS).forEach(([cat, target]) => {
+    const spent = spending[cat] || 0;
+    const pct = incomeMonth > 0 ? (spent / incomeMonth) : 0;
+    const status = getBudgetStatus(spent, incomeMonth, cat);
+    const fillPct = Math.min(pct / (target.max * 1.3), 1) * 100;
+    const targetPct = (target.max / (target.max * 1.3)) * 100;
+    const statusColor = status === 'over' ? 'var(--red)' : status === 'warn' ? 'var(--yellow)' : target.color;
+
+    html += `
+      <div class="budget-group">
+        <div class="budget-header">
+          <div class="budget-name">
+            <span class="budget-status ${status}"></span>
+            ${target.label}
+          </div>
+          <div class="budget-pct">${(pct * 100).toFixed(1)}%</div>
+        </div>
+        <div class="budget-track">
+          <div class="budget-fill" style="width:${fillPct}%;background:${statusColor}"></div>
+          <div class="budget-target" style="left:${targetPct}%"></div>
+        </div>
+        <div class="budget-details">
+          <span>${fmtFull(spent)}</span>
+          <span>Muc tieu: ${(target.min * 100).toFixed(0)}-${(target.max * 100).toFixed(0)}% (${fmt(target.max * incomeMonth)})</span>
+        </div>
+        ${status === 'over' ? `<div class="budget-warn-text over">Vuot ${fmtFull(spent - target.max * incomeMonth)} so voi muc tieu</div>` : ''}
+        ${status === 'warn' ? `<div class="budget-warn-text warn">Gan cham nguong muc tieu — can kiem soat</div>` : ''}
+      </div>`;
+  });
+  document.getElementById('budget-bars').innerHTML = html;
+
+  const allTx = txMonth.sort((a, b) => new Date(b.date) - new Date(a.date));
+  document.getElementById('all-tx').innerHTML = allTx.length ? allTx.map(t => txItemHtml(t)).join('') :
+    '<div class="empty-state">Chua co giao dich trong thang nay</div>';
+
+  document.getElementById('tx-date').value = now();
+}
+
+// ===== RENDER: INVEST =====
+function renderInvest() {
+  const today = new Date();
+  let savingsHtml = '';
+  let totalSavingAmount = 0;
+  let totalInterest = 0;
+
+  if (DATA.savings.length === 0) {
+    savingsHtml = '<div class="empty-state">Chua co so tiet kiem</div>';
+  } else {
+    DATA.savings.forEach(s => {
+      const start = new Date(s.startDate);
+      const endDate = new Date(start);
+      endDate.setMonth(endDate.getMonth() + s.term);
+      const totalDays = (endDate - start) / 86400000;
+      const elapsed = Math.max(0, (today - start) / 86400000);
+      const progress = Math.min(elapsed / totalDays, 1);
+      const interest = s.amount * (s.rate / 100) * (Math.min(elapsed, totalDays) / 365);
+      const matured = today >= endDate;
+
+      totalSavingAmount += s.amount;
+      totalInterest += interest;
+
+      savingsHtml += `
+        <div class="saving-item">
+          <div class="saving-info">
+            <div class="saving-bank">${s.bank}</div>
+            <div class="saving-meta">
+              <span>${s.rate}%/nam</span>
+              <span>${s.term} thang</span>
+              <span>Dao han: ${fmtDate(endDate)}</span>
+            </div>
+          </div>
+          <div class="saving-progress">
+            <div class="saving-bar"><div class="saving-bar-fill" style="width:${progress * 100}%"></div></div>
+            <div class="saving-pct">${(progress * 100).toFixed(0)}%</div>
+          </div>
+          <div class="saving-right">
+            <div class="saving-amount">${fmt(s.amount)}</div>
+            <div class="saving-interest">+${fmt(interest)} lai</div>
+            <span class="saving-status ${matured ? 'matured' : 'active'}">${matured ? 'Dao han' : 'Dang gui'}</span>
+          </div>
+          <button class="delete-btn" onclick="deleteSaving('${s.id}')">${deleteIcon}</button>
+        </div>`;
+    });
+  }
+  document.getElementById('savings-list').innerHTML = savingsHtml;
+  const savTotal = document.getElementById('savings-total');
+  if (DATA.savings.length > 0) {
+    savTotal.style.display = 'flex';
+    document.getElementById('savings-total-value').textContent = fmtFull(totalSavingAmount + totalInterest);
+  } else {
+    savTotal.style.display = 'none';
+  }
+
+  // Portfolio
+  let portHtml = '';
+  let totalPortValue = 0;
+
+  if (DATA.investments.length === 0) {
+    portHtml = '<div class="empty-state">Chua co tai san dau tu</div>';
+  } else {
+    DATA.investments.forEach(inv => {
+      const pnl = inv.currentValue - inv.capital;
+      const pnlPct = inv.capital > 0 ? (pnl / inv.capital * 100) : 0;
+      totalPortValue += inv.currentValue;
+      portHtml += `
+        <div class="inv-item">
+          <span class="inv-type-badge inv-type-${inv.type}">${INV_TYPES[inv.type]}</span>
+          <div class="inv-info">
+            <div class="inv-name">${inv.name}</div>
+            <div class="inv-capital">Von: ${fmtFull(inv.capital)}</div>
+          </div>
+          <div class="inv-right">
+            <div class="inv-value">${fmt(inv.currentValue)}</div>
+            <div class="inv-pnl ${pnl >= 0 ? 'positive' : 'negative'}">${pnl >= 0 ? '+' : ''}${fmt(pnl)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%)</div>
+          </div>
+          <button class="delete-btn" onclick="deleteInvestment('${inv.id}')">${deleteIcon}</button>
+        </div>`;
+    });
+  }
+  document.getElementById('portfolio-list').innerHTML = portHtml;
+  const portTotal = document.getElementById('portfolio-total');
+  if (DATA.investments.length > 0) {
+    portTotal.style.display = 'flex';
+    document.getElementById('portfolio-total-value').textContent = fmtFull(totalPortValue);
+  } else {
+    portTotal.style.display = 'none';
+  }
+
+  document.getElementById('sv-start').value = now();
+}
+
+// ===== RENDER: AI =====
+function renderAI() {
+  const msgs = document.getElementById('ai-messages');
+  msgs.innerHTML = DATA.aiMessages.map(m => `
+    <div class="ai-msg ${m.role}">${m.role === 'assistant' ? formatAIResponse(m.content) : m.content}</div>
+  `).join('');
+  msgs.scrollTop = msgs.scrollHeight;
+
+  const { y, m: mo } = thisMonth();
+  const txMonth = getMonthlyTx(y, mo);
+  const income = txMonth.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0) || DATA.settings.monthlyIncome;
+  const spending = getCategorySpending(txMonth);
+  const overCategories = Object.entries(BUDGET_TARGETS).filter(([cat]) => getBudgetStatus(spending[cat], income, cat) === 'over');
+
+  const alertCard = document.getElementById('ai-alert-card');
+  if (overCategories.length > 0) {
+    alertCard.style.display = 'block';
+    alertCard.innerHTML = `
+      <div class="card-title" style="color:var(--red)">Canh bao ngan sach</div>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.5;margin-bottom:10px">
+        ${overCategories.map(([cat, t]) => `<strong style="color:var(--red)">${t.label}</strong>: ${(spending[cat] / income * 100).toFixed(0)}% thu nhap`).join(' — ')}
+      </p>
+      <button class="btn btn-sm btn-secondary" onclick="askAIAboutBudget()">AI phan tich chi tieu vuot</button>`;
+  } else {
+    alertCard.style.display = 'none';
+  }
+
+  const suggestions = [
+    'Phan tich chi tieu thang nay — toi dang lech mo hinh o dau?',
+    'Danh gia suc khoe tai chinh va duong den tu do tai chinh',
+    'So sanh hieu qua tiet kiem ngan hang vs danh muc dau tu',
+    'Toi can dieu chinh gi de dat muc tieu tai chinh gia dinh?',
+    'Goi y kenh dau tu phu hop cho gia dinh Viet Nam thu nhap trung luu cao',
+  ];
+  document.getElementById('ai-suggestions').innerHTML = DATA.aiMessages.length === 0 ?
+    suggestions.map(s => `<button class="ai-suggest-btn" onclick="askAI('${s.replace(/'/g, "\\'")}')">${s}</button>`).join('') : '';
+
+  document.getElementById('api-key').value = DATA.apiKey || '';
+}
+
+function formatAIResponse(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n- /g, '\n<li>')
+    .replace(/\n\d+\. /g, (m) => '\n<li>')
+    .replace(/\n/g, '<br>')
+    .replace(/<li>/g, '</p><ul><li>').replace(/<\/li>(?!<li>)/g, '</li></ul><p>');
+}
+
+// ===== ACTIONS =====
+let txType = 'expense';
+function toggleTxType() {
+  txType = txType === 'expense' ? 'income' : 'expense';
+  document.getElementById('tx-type-btn').textContent = txType === 'expense' ? 'Chi tieu' : 'Thu nhap';
+  document.getElementById('tx-category').closest('.form-group').style.display = txType === 'income' ? 'none' : '';
+}
+
+function addTransaction() {
+  const desc = document.getElementById('tx-desc').value.trim();
+  const amount = parseFloat(document.getElementById('tx-amount').value);
+  const category = document.getElementById('tx-category').value;
+  const date = document.getElementById('tx-date').value || now();
+  if (!desc || !amount) return;
+
+  DATA.transactions.push({ id: uid(), desc, amount, category: txType === 'income' ? 'Thu nhap' : category, type: txType, date });
+  saveData(DATA);
+  document.getElementById('tx-desc').value = '';
+  document.getElementById('tx-amount').value = '';
+  renderAll();
+}
+
+function deleteTx(id) {
+  DATA.transactions = DATA.transactions.filter(t => t.id !== id);
+  saveData(DATA);
+  renderAll();
+}
+
+function addSaving() {
+  const bank = document.getElementById('sv-bank').value.trim();
+  const amount = parseFloat(document.getElementById('sv-amount').value);
+  const rate = parseFloat(document.getElementById('sv-rate').value);
+  const term = parseInt(document.getElementById('sv-term').value);
+  const startDate = document.getElementById('sv-start').value || now();
+  if (!bank || !amount || !rate || !term) return;
+
+  DATA.savings.push({ id: uid(), bank, amount, rate, term, startDate });
+  saveData(DATA);
+  document.getElementById('sv-bank').value = '';
+  document.getElementById('sv-amount').value = '';
+  document.getElementById('sv-rate').value = '';
+  document.getElementById('sv-term').value = '';
+  renderAll();
+}
+
+function deleteSaving(id) {
+  DATA.savings = DATA.savings.filter(s => s.id !== id);
+  saveData(DATA);
+  renderAll();
+}
+
+function addInvestment() {
+  const name = document.getElementById('inv-name').value.trim();
+  const type = document.getElementById('inv-type').value;
+  const capital = parseFloat(document.getElementById('inv-capital').value);
+  const currentValue = parseFloat(document.getElementById('inv-current').value);
+  if (!name || !capital) return;
+
+  DATA.investments.push({ id: uid(), name, type, capital, currentValue: currentValue || capital });
+  saveData(DATA);
+  document.getElementById('inv-name').value = '';
+  document.getElementById('inv-capital').value = '';
+  document.getElementById('inv-current').value = '';
+  renderAll();
+}
+
+function deleteInvestment(id) {
+  DATA.investments = DATA.investments.filter(i => i.id !== id);
+  saveData(DATA);
+  renderAll();
+}
+
+// ===== AI =====
+function buildContext() {
+  const { y, m } = thisMonth();
+  const txMonth = getMonthlyTx(y, m);
+  const income = txMonth.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0) || DATA.settings.monthlyIncome;
+  const spending = getCategorySpending(txMonth);
+  const totalSavings = DATA.savings.reduce((s, v) => s + v.amount, 0);
+  const totalInvest = DATA.investments.reduce((s, v) => s + v.currentValue, 0);
+
+  let ctx = `${DATA.settings.familyName}\n`;
+  ctx += `Thu nhap thang: ${fmtFull(income)}\n`;
+  ctx += `Tong tiet kiem ngan hang: ${fmtFull(totalSavings)} (${DATA.savings.length} so)\n`;
+  ctx += `Tong dau tu: ${fmtFull(totalInvest)} (${DATA.investments.length} tai san)\n\n`;
+  ctx += `Chi tieu thang nay:\n`;
+  Object.entries(BUDGET_TARGETS).forEach(([cat, target]) => {
+    const spent = spending[cat] || 0;
+    const pct = income > 0 ? (spent / income * 100).toFixed(1) : '0';
+    const status = getBudgetStatus(spent, income, cat);
+    const statusTag = status === 'over' ? '[VUOT]' : status === 'warn' ? '[GAN VUOT]' : '[TOT]';
+    ctx += `  ${statusTag} ${target.label}: ${fmtFull(spent)} (${pct}% — muc tieu ${(target.min * 100).toFixed(0)}-${(target.max * 100).toFixed(0)}%)\n`;
+  });
+
+  if (DATA.savings.length > 0) {
+    ctx += `\nChi tiet tiet kiem:\n`;
+    DATA.savings.forEach(s => ctx += `  ${s.bank}: ${fmtFull(s.amount)}, ${s.rate}%/nam, ${s.term} thang\n`);
+  }
+  if (DATA.investments.length > 0) {
+    ctx += `\nChi tiet dau tu:\n`;
+    DATA.investments.forEach(inv => {
+      const pnl = inv.currentValue - inv.capital;
+      ctx += `  ${inv.name} (${INV_TYPES[inv.type]}): von ${fmtFull(inv.capital)}, hien tai ${fmtFull(inv.currentValue)}, ${pnl >= 0 ? '+' : ''}${fmtFull(pnl)}\n`;
+    });
+  }
+  return ctx;
+}
+
+function saveApiKey() {
+  DATA.apiKey = document.getElementById('api-key').value.trim();
+  saveData(DATA);
+}
+
+async function askAI(question) {
+  document.getElementById('ai-input').value = '';
+  DATA.aiMessages.push({ role: 'user', content: question });
+  saveData(DATA);
+  renderAI();
+  await callAI(question);
+}
+
+function askAIAboutBudget() {
+  askAI('Phan tich cac danh muc chi tieu dang vuot ngan sach va dua ra khuyen nghi cat giam cu the.');
+}
+
+async function sendAI() {
+  const input = document.getElementById('ai-input');
+  const question = input.value.trim();
+  if (!question) return;
+  await askAI(question);
+}
+
+async function callAI(question) {
+  const apiKey = DATA.apiKey;
+  if (!apiKey) {
+    DATA.aiMessages.push({ role: 'assistant', content: 'Vui long nhap Claude API Key ben duoi de su dung AI tu van.' });
+    saveData(DATA);
+    renderAI();
+    return;
+  }
+
+  const msgs = document.getElementById('ai-messages');
+  msgs.innerHTML += '<div class="ai-typing"><span></span><span></span><span></span></div>';
+  msgs.scrollTop = msgs.scrollHeight;
+
+  const systemPrompt = `Ban la co van tai chinh ca nhan cao cap, phong cach private banker. Ngan gon, sac ben, thuc te. Tra loi tieng Viet.
+Khi phan tich, luon doi chieu voi mo hinh 6 nhom tai chinh gia dinh thong minh:
+- Chi tieu thiet yeu (50-55%)
+- Tiet kiem & Dau tu (10-20%)
+- Quy du phong khan cap (5-10%)
+- Giao duc & Phat trien (10%)
+- Huong thu & Giai tri (10%)
+- Cho di & Xa hoi (5%)
+
+Du lieu gia dinh:
+${buildContext()}`;
+
+  const messages = DATA.aiMessages.map(m => ({ role: m.role, content: m.content }));
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Khong nhan duoc phan hoi.';
+    DATA.aiMessages.push({ role: 'assistant', content: reply });
+  } catch (e) {
+    DATA.aiMessages.push({ role: 'assistant', content: `Loi ket noi AI: ${e.message}` });
+  }
+
+  saveData(DATA);
+  renderAI();
+}
+
+// ===== NAV =====
+function switchPanel(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+  renderAll();
+}
+
+function switchInvestTab(tab, btn) {
+  document.getElementById('tab-savings').style.display = tab === 'savings' ? 'block' : 'none';
+  document.getElementById('tab-portfolio').style.display = tab === 'portfolio' ? 'block' : 'none';
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ===== SETTINGS =====
+function openSettings() {
+  document.getElementById('setting-income').value = DATA.settings.monthlyIncome;
+  document.getElementById('setting-family').value = DATA.settings.familyName;
+
+  // Load Firebase config
+  const fbConfig = loadFbConfig();
+  if (fbConfig) {
+    document.getElementById('fb-url').value = fbConfig.databaseURL || '';
+    document.getElementById('fb-apikey').value = fbConfig.apiKey || '';
+    document.getElementById('fb-family-code').value = fbConfig.familyCode || '';
+  }
+
+  document.getElementById('settings-modal').classList.add('show');
+}
+function closeSettings() { document.getElementById('settings-modal').classList.remove('show'); }
+function saveSettings() {
+  DATA.settings.monthlyIncome = parseFloat(document.getElementById('setting-income').value) || 30000000;
+  DATA.settings.familyName = document.getElementById('setting-family').value || 'Gia dinh';
+  saveData(DATA);
+  renderAll();
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `wealth-backup-${now()}.json`;
+  a.click();
+}
+function importDataClick() { document.getElementById('import-file').click(); }
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      DATA = { ...DEFAULT_DATA, ...imported };
+      saveData(DATA);
+      renderAll();
+      closeSettings();
+    } catch { alert('File khong hop le'); }
+  };
+  reader.readAsText(file);
+}
+
+function resetAllData() {
+  if (!confirm('Xoa toan bo du lieu?')) return;
+  DATA = structuredClone(DEFAULT_DATA);
+  localStorage.removeItem(STORAGE_KEY);
+  if (fbRef) fbRef.set(null);
+  location.reload();
+}
+
+// Close modal on overlay click
+document.getElementById('settings-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeSettings();
+});
+
+// ===== INIT =====
+function renderAll() {
+  renderOverview();
+  renderSpending();
+  renderInvest();
+  renderAI();
+}
+
+renderAll();
+initFirebase();
+</script>
+</body>
+</html>
