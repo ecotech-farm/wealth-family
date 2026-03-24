@@ -348,25 +348,49 @@ textarea.form-input{resize:vertical;min-height:60px}
         <div class="card-title">Thêm khoản đầu tư</div>
         <div class="form-group">
           <label class="form-label">Tên tài sản</label>
-          <input class="form-input" id="invName" placeholder="VD: VNM, Bitcoin...">
+          <input class="form-input" id="invName" placeholder="VD: Vàng SJC, VNM, Bitcoin...">
         </div>
         <div class="form-group">
           <label class="form-label">Loại</label>
           <div class="pills" id="invTypePills"></div>
         </div>
+        <div class="form-group">
+          <label class="form-label">Ngày mua</label>
+          <input class="form-input" type="date" id="invDate">
+        </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Vốn đầu tư</label>
-            <input class="form-input money" id="invCapital" placeholder="0" inputmode="numeric">
+            <label class="form-label">Số lượng</label>
+            <input class="form-input" id="invQty" placeholder="VD: 1, 2.5" inputmode="decimal">
           </div>
           <div class="form-group">
-            <label class="form-label">Giá trị hiện tại</label>
-            <input class="form-input money" id="invCurrent" placeholder="0" inputmode="numeric">
+            <label class="form-label">Đơn vị</label>
+            <input class="form-input" id="invUnit" placeholder="VD: chỉ, lượng, cổ, coin">
           </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Giá mua / đơn vị</label>
+            <input class="form-input money" id="invBuyPrice" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Giá hiện tại / đơn vị</label>
+            <input class="form-input money" id="invCurrentPrice" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+        <div class="form-group" style="background:var(--bg3);padding:10px 14px;border-radius:var(--radius-sm);font-size:.78rem;color:var(--text2)" id="invCalcPreview">
+          Tổng vốn: <b>0</b> | Giá trị hiện tại: <b>0</b> | Lãi/Lỗ: <b>0</b>
         </div>
         <button class="btn btn-gold btn-block" onclick="addInvestment()">Thêm đầu tư</button>
       </div>
-      <div id="investList"></div>
+      <div class="card" id="investSummaryCard" style="display:none">
+        <div class="card-title">Tổng hợp danh mục</div>
+        <div id="investSummary"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Chi tiết các lần mua</div>
+        <div id="investList"></div>
+      </div>
     </div>
   </div>
 
@@ -699,6 +723,7 @@ function initUI() {
   // Date default
   document.getElementById('txDate').value = todayStr();
   document.getElementById('savStart').value = todayStr();
+  document.getElementById('invDate').value = todayStr();
 
   // Money auto-format
   document.querySelectorAll('.form-input.money').forEach(input => {
@@ -706,6 +731,11 @@ function initUI() {
       const raw = e.target.value.replace(/\D/g, '');
       e.target.value = raw ? formatMoney(parseInt(raw)) : '';
     });
+  });
+
+  // Investment live calc preview
+  ['invQty','invBuyPrice','invCurrentPrice'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateInvPreview);
   });
 
   // Suggested questions
@@ -1204,23 +1234,103 @@ function addSavings() {
 }
 
 // ===== INVESTMENTS =====
+function updateInvPreview() {
+  const qty = parseFloat(document.getElementById('invQty').value) || 0;
+  const buyPrice = parseMoney(document.getElementById('invBuyPrice').value);
+  const curPrice = parseMoney(document.getElementById('invCurrentPrice').value);
+  const capital = Math.round(qty * buyPrice);
+  const current = Math.round(qty * curPrice);
+  const pnl = current - capital;
+  const sign = pnl >= 0 ? '+' : '';
+  const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('invCalcPreview').innerHTML =
+    `Tổng vốn: <b>${formatMoney(capital)}</b> | Giá trị hiện tại: <b>${formatMoney(current)}</b> | Lãi/Lỗ: <b style="color:${pnlColor}">${sign}${formatMoney(pnl)}</b>`;
+}
+
 function renderInvestments() {
   const container = document.getElementById('investList');
+  const summaryCard = document.getElementById('investSummaryCard');
+  const summaryContainer = document.getElementById('investSummary');
+
   if (!DATA.investments.length) {
     container.innerHTML = '<p style="font-size:.8rem;color:var(--text3);padding:16px;text-align:center">Chưa có khoản đầu tư nào</p>';
+    summaryCard.style.display = 'none';
     return;
   }
-  container.innerHTML = DATA.investments.map(inv => {
+
+  // Group by name for summary
+  const groups = {};
+  DATA.investments.forEach(inv => {
+    const key = inv.name.toLowerCase().trim();
+    if (!groups[key]) groups[key] = { name: inv.name, type: inv.type, items: [] };
+    groups[key].items.push(inv);
+  });
+
+  // Render summary (grouped)
+  const groupKeys = Object.keys(groups);
+  if (groupKeys.length > 0) {
+    summaryCard.style.display = 'block';
+    summaryContainer.innerHTML = groupKeys.map(key => {
+      const g = groups[key];
+      const type = getInvTypeById(g.type) || INV_TYPES[6];
+      let totalQty = 0, totalCapital = 0, totalCurrent = 0;
+      g.items.forEach(inv => {
+        const qty = inv.qty || 1;
+        totalQty += qty;
+        totalCapital += inv.capital;
+        totalCurrent += inv.currentValue;
+      });
+      const avgBuy = totalQty > 0 ? Math.round(totalCapital / totalQty) : 0;
+      const avgCur = totalQty > 0 ? Math.round(totalCurrent / totalQty) : 0;
+      const pnl = totalCurrent - totalCapital;
+      const pnlPct = totalCapital ? (pnl / totalCapital * 100) : 0;
+      const sign = pnl >= 0 ? '+' : '';
+      const unit = g.items[0]?.unit || '';
+      return `<div class="invest-item" style="border:1px solid rgba(0,0,0,.06);border-radius:var(--radius);padding:14px;margin-bottom:8px">
+        <div class="invest-header" style="margin-bottom:8px">
+          <div class="invest-name" style="font-size:.95rem">${g.name}</div>
+          <span class="invest-type-badge" style="background:${type.colorDim};color:${type.color}">${type.name}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.75rem;color:var(--text2);margin-bottom:8px">
+          <span>Tổng SL: <b style="color:var(--text)">${totalQty} ${unit}</b></span>
+          <span>Giá TB mua: <b style="color:var(--text)">${formatMoney(avgBuy)}</b></span>
+          <span>Tổng vốn: <b style="color:var(--text)">${formatMoney(totalCapital)}</b></span>
+          <span>Giá hiện tại: <b style="color:var(--text)">${formatMoney(avgCur)}</b></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--bg3)">
+          <span style="font-size:.75rem;color:var(--text3)">Giá trị: <b style="color:var(--text)">${formatMoney(totalCurrent)}</b></span>
+          <div class="invest-pnl ${pnl >= 0 ? 'pos' : 'neg'}">${sign}${formatMoney(Math.round(pnl))} (${sign}${pnlPct.toFixed(1)}%)</div>
+        </div>
+        ${g.items.length > 1 ? `<div style="font-size:.65rem;color:var(--text3);margin-top:6px">${g.items.length} lần mua</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  // Render individual entries
+  const sorted = [...DATA.investments].sort((a,b) => new Date(b.date||0) - new Date(a.date||0));
+  container.innerHTML = sorted.map(inv => {
     const type = getInvTypeById(inv.type) || INV_TYPES[6];
     const pnl = inv.currentValue - inv.capital;
     const pnlPct = inv.capital ? (pnl / inv.capital * 100) : 0;
     const sign = pnl >= 0 ? '+' : '';
+    const qty = inv.qty || '';
+    const unit = inv.unit || '';
+    const buyPrice = inv.buyPrice ? formatMoney(inv.buyPrice) : '';
+    const curPrice = inv.currentPrice ? formatMoney(inv.currentPrice) : '';
     return `<div class="invest-item">
       <div class="invest-header">
-        <div class="invest-name">${inv.name}</div>
+        <div>
+          <div class="invest-name">${inv.name}</div>
+          ${inv.date ? `<div style="font-size:.65rem;color:var(--text3)">${formatDate(inv.date)}</div>` : ''}
+        </div>
         <span class="invest-type-badge" style="background:${type.colorDim};color:${type.color}">${type.name}</span>
       </div>
       <div class="invest-values">
+        ${qty ? `<span style="color:var(--text3)">SL: ${qty} ${unit}</span>` : ''}
+        ${buyPrice ? `<span style="color:var(--text3)">Giá mua: ${buyPrice}</span>` : ''}
+        ${curPrice ? `<span style="color:var(--text3)">Giá HT: ${curPrice}</span>` : ''}
+      </div>
+      <div class="invest-values" style="margin-top:4px">
         <span style="color:var(--text3)">Vốn: ${formatMoney(inv.capital)}</span>
         <span style="color:var(--text3)">Hiện tại: ${formatMoney(inv.currentValue)}</span>
       </div>
@@ -1234,21 +1344,34 @@ function renderInvestments() {
 
 function addInvestment() {
   const name = document.getElementById('invName').value.trim();
-  const capital = parseMoney(document.getElementById('invCapital').value);
-  const currentValue = parseMoney(document.getElementById('invCurrent').value);
+  const qty = parseFloat(document.getElementById('invQty').value) || 0;
+  const unit = document.getElementById('invUnit').value.trim();
+  const buyPrice = parseMoney(document.getElementById('invBuyPrice').value);
+  const currentPrice = parseMoney(document.getElementById('invCurrentPrice').value);
+  const date = document.getElementById('invDate').value;
 
   if (!name) { showToast('Vui lòng nhập tên tài sản', 'error'); return; }
-  if (!capital) { showToast('Vui lòng nhập vốn đầu tư', 'error'); return; }
-  if (!currentValue) { showToast('Vui lòng nhập giá trị hiện tại', 'error'); return; }
+  if (!qty || qty <= 0) { showToast('Vui lòng nhập số lượng', 'error'); return; }
+  if (!buyPrice) { showToast('Vui lòng nhập giá mua', 'error'); return; }
+  if (!currentPrice) { showToast('Vui lòng nhập giá hiện tại', 'error'); return; }
 
-  DATA.investments.push({ id: uid(), name, type: selectedInvType, capital, currentValue });
+  const capital = Math.round(qty * buyPrice);
+  const currentValue = Math.round(qty * currentPrice);
+
+  DATA.investments.push({
+    id: uid(), name, type: selectedInvType, qty, unit,
+    buyPrice, currentPrice, capital, currentValue, date
+  });
   saveLocal();
   renderAll();
   showToast('Đã thêm khoản đầu tư', 'success');
 
   document.getElementById('invName').value = '';
-  document.getElementById('invCapital').value = '';
-  document.getElementById('invCurrent').value = '';
+  document.getElementById('invQty').value = '';
+  document.getElementById('invUnit').value = '';
+  document.getElementById('invBuyPrice').value = '';
+  document.getElementById('invCurrentPrice').value = '';
+  updateInvPreview();
 }
 
 // ===== AI CHAT =====
