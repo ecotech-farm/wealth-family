@@ -518,7 +518,8 @@ let DATA = {
   transactions: [],
   savings: [],
   investments: [],
-  aiApiKey: ''
+  aiApiKey: '',
+  chatHistory: []
 };
 
 let selectedCat = null;
@@ -532,6 +533,7 @@ let chatHistory = [];
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
   loadLocal();
+  chatHistory = DATA.chatHistory || [];
   initSupabase();
   initUI();
   renderAll();
@@ -540,15 +542,16 @@ document.addEventListener('DOMContentLoaded', () => {
 function loadLocal() {
   try {
     const saved = localStorage.getItem('wealth_data');
-    if (saved) DATA = JSON.parse(saved);
-    const apiKey = localStorage.getItem('wealth_ai_key');
-    if (apiKey) DATA.aiApiKey = apiKey;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      DATA = { ...DATA, ...parsed };
+      if (!DATA.chatHistory) DATA.chatHistory = [];
+    }
   } catch(e) {}
 }
 
 function saveLocal() {
   localStorage.setItem('wealth_data', JSON.stringify(DATA));
-  if (DATA.aiApiKey) localStorage.setItem('wealth_ai_key', DATA.aiApiKey);
   syncToSupabase();
 }
 
@@ -583,12 +586,17 @@ async function connectFamily(code) {
       DATA.transactions = remote.transactions || DATA.transactions;
       DATA.savings = remote.savings || DATA.savings;
       DATA.investments = remote.investments || DATA.investments;
+      if (remote.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
+      if (remote.chatHistory) DATA.chatHistory = remote.chatHistory;
       if (remote.settings) {
         DATA.settings.familyName = remote.settings.familyName || DATA.settings.familyName;
         DATA.settings.monthlyIncome = remote.settings.monthlyIncome || DATA.settings.monthlyIncome;
       }
       localStorage.setItem('wealth_data', JSON.stringify(DATA));
       renderAll();
+      // Update API key input if on AI panel
+      const keyInput = document.getElementById('aiApiKey');
+      if (keyInput && DATA.aiApiKey) keyInput.value = DATA.aiApiKey;
     }
 
     // Subscribe to realtime changes
@@ -605,13 +613,21 @@ async function connectFamily(code) {
           DATA.transactions = remote.transactions || [];
           DATA.savings = remote.savings || [];
           DATA.investments = remote.investments || [];
+          if (remote.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
+          if (remote.chatHistory) {
+            DATA.chatHistory = remote.chatHistory;
+            chatHistory = DATA.chatHistory;
+            renderChat();
+          }
           if (remote.settings) {
             DATA.settings.familyName = remote.settings.familyName || DATA.settings.familyName;
             DATA.settings.monthlyIncome = remote.settings.monthlyIncome || DATA.settings.monthlyIncome;
           }
           localStorage.setItem('wealth_data', JSON.stringify(DATA));
           renderAll();
-          showToast('Dữ liệu da duoc dong bo', 'success');
+          const keyInput = document.getElementById('aiApiKey');
+          if (keyInput && DATA.aiApiKey) keyInput.value = DATA.aiApiKey;
+          showToast('Dữ liệu đã được đồng bộ', 'success');
         }
       })
       .subscribe((status) => {
@@ -635,7 +651,9 @@ async function syncToSupabase() {
       settings: { familyName: DATA.settings.familyName, monthlyIncome: DATA.settings.monthlyIncome },
       transactions: DATA.transactions,
       savings: DATA.savings,
-      investments: DATA.investments
+      investments: DATA.investments,
+      aiApiKey: DATA.aiApiKey,
+      chatHistory: DATA.chatHistory
     };
     await supaClient.from('families').upsert({
       id: DATA.settings.familyCode,
@@ -751,12 +769,12 @@ function initUI() {
     sq.appendChild(btn);
   });
 
-  // API key
+  // API key - sync across devices
   const keyInput = document.getElementById('aiApiKey');
   keyInput.value = DATA.aiApiKey || '';
   keyInput.addEventListener('change', () => {
     DATA.aiApiKey = keyInput.value.trim();
-    localStorage.setItem('wealth_ai_key', DATA.aiApiKey);
+    saveLocal(); // sync API key to Supabase
   });
 
   // Enter to send chat
@@ -1376,6 +1394,8 @@ function addInvestment() {
 
 // ===== AI CHAT =====
 function initAIPanel() {
+  // Render existing chat history
+  if (chatHistory.length > 0) renderChat();
   // Auto-analyze budget warnings
   const income = getMonthlyIncome();
   if (income && chatHistory.length === 0) {
@@ -1484,6 +1504,9 @@ Trả lời ngắn gọn, thực tế, có thể hành động.`;
     chatHistory.push({ role: 'assistant', content: 'Lỗi kết nối: ' + e.message });
   }
   renderChat();
+  // Sync chat history
+  DATA.chatHistory = chatHistory;
+  saveLocal();
 }
 
 // ===== SETTINGS =====
