@@ -257,6 +257,23 @@ textarea{resize:vertical;min-height:60px}
 .total-label{font-size:.8rem;color:var(--gold);font-weight:400}
 .total-value{font-family:var(--font-num);font-size:1.1rem;font-weight:500;color:var(--gold)}
 
+/* Pill buttons */
+.pill-group{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.pill{padding:6px 14px;border-radius:20px;border:1px solid var(--bg4);background:var(--bg3);color:var(--text3);font-family:var(--font-body);font-size:.75rem;cursor:pointer;transition:var(--transition);white-space:nowrap}
+.pill:hover{border-color:var(--gold);color:var(--gold)}
+.pill.active{background:var(--gold-dim);color:var(--gold);border-color:rgba(196,150,60,.3)}
+.pill-label{font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+
+/* Fix delete buttons - always visible on mobile, better visibility */
+.delete-btn{opacity:.4;position:relative}
+.delete-btn svg{pointer-events:none}
+.tx-item:hover .delete-btn,.saving-item:hover .delete-btn,.inv-item:hover .delete-btn{opacity:1}
+@media(max-width:600px){.delete-btn{opacity:.6}}
+
+/* Validation toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;padding:12px 24px;border-radius:var(--radius);font-size:.82rem;font-family:var(--font-body);z-index:9999;animation:toastIn .3s ease;pointer-events:none}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
 /* Responsive grid for larger screens within 760 */
 @media(min-width:500px){
   .kpi-strip{grid-template-columns:repeat(4,1fr)}
@@ -326,34 +343,49 @@ textarea{resize:vertical;min-height:60px}
         Nhap giao dich
         <button class="btn btn-sm btn-secondary" onclick="toggleTxType()" id="tx-type-btn">Chi tieu</button>
       </div>
+      <div class="pill-label">Danh muc</div>
+      <div class="pill-group" id="cat-pills">
+        <button class="pill active" onclick="selectCategory('Chi tieu thiet yeu','Tien cho, tien nha, dien nuoc',this)">Thiet yeu</button>
+        <button class="pill" onclick="selectCategory('Tiet kiem & Dau tu','Tiet kiem, dau tu',this)">Tiet kiem & DT</button>
+        <button class="pill" onclick="selectCategory('Quy du phong','Quy du phong',this)">Du phong</button>
+        <button class="pill" onclick="selectCategory('Giao duc','Hoc phi, sach vo',this)">Giao duc</button>
+        <button class="pill" onclick="selectCategory('Huong thu','An ngoai, giai tri',this)">Huong thu</button>
+        <button class="pill" onclick="selectCategory('Cho di & Xa hoi','Tu thien, qua tang',this)">Cho di</button>
+      </div>
+      <select id="tx-category" style="display:none">
+        <option value="Chi tieu thiet yeu">Chi tieu thiet yeu</option>
+        <option value="Tiet kiem & Dau tu">Tiet kiem & Dau tu</option>
+        <option value="Quy du phong">Quy du phong khan cap</option>
+        <option value="Giao duc">Giao duc & Phat trien</option>
+        <option value="Huong thu">Huong thu & Giai tri</option>
+        <option value="Cho di & Xa hoi">Cho di & Xa hoi</option>
+      </select>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Mo ta</label>
           <input id="tx-desc" placeholder="VD: Tien cho, Tien nha...">
         </div>
         <div class="form-group" style="max-width:140px">
-          <label class="form-label">So tien</label>
-          <input id="tx-amount" type="number" placeholder="0">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Danh muc</label>
-          <select id="tx-category">
-            <option value="Chi tieu thiet yeu">Chi tieu thiet yeu</option>
-            <option value="Tiet kiem & Dau tu">Tiet kiem & Dau tu</option>
-            <option value="Quy du phong">Quy du phong khan cap</option>
-            <option value="Giao duc">Giao duc & Phat trien</option>
-            <option value="Huong thu">Huong thu & Giai tri</option>
-            <option value="Cho di & Xa hoi">Cho di & Xa hoi</option>
-          </select>
-        </div>
-        <div class="form-group" style="max-width:140px">
           <label class="form-label">Ngay</label>
           <input id="tx-date" type="date">
         </div>
       </div>
-      <button class="btn btn-primary btn-block" onclick="addTransaction()">Them giao dich</button>
+      <div class="form-group" style="margin-bottom:10px">
+        <label class="form-label">So tien</label>
+        <input id="tx-amount" type="number" placeholder="0">
+      </div>
+      <div class="pill-label">Chon nhanh</div>
+      <div class="pill-group" id="amount-pills">
+        <button class="pill" onclick="selectAmount(50000,this)">50K</button>
+        <button class="pill" onclick="selectAmount(100000,this)">100K</button>
+        <button class="pill" onclick="selectAmount(200000,this)">200K</button>
+        <button class="pill" onclick="selectAmount(500000,this)">500K</button>
+        <button class="pill" onclick="selectAmount(1000000,this)">1M</button>
+        <button class="pill" onclick="selectAmount(2000000,this)">2M</button>
+        <button class="pill" onclick="selectAmount(5000000,this)">5M</button>
+        <button class="pill" onclick="selectAmount(10000000,this)">10M</button>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="addTransaction()">Xac nhan</button>
     </div>
     <div class="card">
       <div class="card-title">Tat ca giao dich thang nay</div>
@@ -380,7 +412,17 @@ textarea{resize:vertical;min-height:60px}
           <div class="form-group"><label class="form-label">Ky han (thang)</label><input id="sv-term" type="number" placeholder="12"></div>
           <div class="form-group"><label class="form-label">Ngay gui</label><input id="sv-start" type="date"></div>
         </div>
-        <button class="btn btn-primary btn-block" onclick="addSaving()">Them so tiet kiem</button>
+        <div class="pill-label">Chon ky han</div>
+        <div class="pill-group" id="term-pills">
+          <button class="pill" onclick="selectTerm(1,this)">1T</button>
+          <button class="pill" onclick="selectTerm(3,this)">3T</button>
+          <button class="pill" onclick="selectTerm(6,this)">6T</button>
+          <button class="pill active" onclick="selectTerm(12,this)">12T</button>
+          <button class="pill" onclick="selectTerm(18,this)">18T</button>
+          <button class="pill" onclick="selectTerm(24,this)">24T</button>
+          <button class="pill" onclick="selectTerm(36,this)">36T</button>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="addSaving()">Dang ky so</button>
       </div>
       <div class="card">
         <div class="card-title">Danh sach so tiet kiem</div>
@@ -397,9 +439,7 @@ textarea{resize:vertical;min-height:60px}
         <div class="card-title">Them tai san dau tu</div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Ten / Ma</label><input id="inv-name" placeholder="VD: VNM, BTC"></div>
-          <div class="form-group">
-            <label class="form-label">Loai</label>
-            <select id="inv-type">
+          <select id="inv-type" style="display:none">
               <option value="stock">Co phieu</option>
               <option value="crypto">Crypto</option>
               <option value="realestate">Bat dong san</option>
@@ -408,13 +448,22 @@ textarea{resize:vertical;min-height:60px}
               <option value="gold">Vang</option>
               <option value="other">Khac</option>
             </select>
-          </div>
+        </div>
+        <div class="pill-label">Loai tai san</div>
+        <div class="pill-group" id="inv-type-pills">
+          <button class="pill active" onclick="selectInvType('stock',this)">Co phieu</button>
+          <button class="pill" onclick="selectInvType('crypto',this)">Crypto</button>
+          <button class="pill" onclick="selectInvType('realestate',this)">BDS</button>
+          <button class="pill" onclick="selectInvType('etf',this)">ETF</button>
+          <button class="pill" onclick="selectInvType('bond',this)">Trai phieu</button>
+          <button class="pill" onclick="selectInvType('gold',this)">Vang</button>
+          <button class="pill" onclick="selectInvType('other',this)">Khac</button>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Von dau tu</label><input id="inv-capital" type="number" placeholder="0"></div>
           <div class="form-group"><label class="form-label">Gia tri hien tai</label><input id="inv-current" type="number" placeholder="0"></div>
         </div>
-        <button class="btn btn-primary btn-block" onclick="addInvestment()">Them tai san</button>
+        <button class="btn btn-primary btn-block" onclick="addInvestment()">Them vao danh muc</button>
       </div>
       <div class="card">
         <div class="card-title">Danh muc dau tu</div>
@@ -827,7 +876,7 @@ function txItemHtml(t) {
         <div class="tx-amount ${t.type}">${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}</div>
         <div class="tx-date">${fmtDate(t.date)}</div>
       </div>
-      <button class="delete-btn" onclick="deleteTx('${t.id}')" title="Xoa">${deleteIcon}</button>
+      <button class="delete-btn" data-action="delete-tx" data-id="${t.id}" title="Xoa">${deleteIcon}</button>
     </div>`;
 }
 
@@ -919,7 +968,7 @@ function renderInvest() {
             <div class="saving-interest">+${fmt(interest)} lai</div>
             <span class="saving-status ${matured ? 'matured' : 'active'}">${matured ? 'Dao han' : 'Dang gui'}</span>
           </div>
-          <button class="delete-btn" onclick="deleteSaving('${s.id}')">${deleteIcon}</button>
+          <button class="delete-btn" data-action="delete-saving" data-id="${s.id}">${deleteIcon}</button>
         </div>`;
     });
   }
@@ -954,7 +1003,7 @@ function renderInvest() {
             <div class="inv-value">${fmt(inv.currentValue)}</div>
             <div class="inv-pnl ${pnl >= 0 ? 'positive' : 'negative'}">${pnl >= 0 ? '+' : ''}${fmt(pnl)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%)</div>
           </div>
-          <button class="delete-btn" onclick="deleteInvestment('${inv.id}')">${deleteIcon}</button>
+          <button class="delete-btn" data-action="delete-inv" data-id="${inv.id}">${deleteIcon}</button>
         </div>`;
     });
   }
@@ -1019,12 +1068,53 @@ function formatAIResponse(text) {
     .replace(/<li>/g, '</p><ul><li>').replace(/<\/li>(?!<li>)/g, '</li></ul><p>');
 }
 
+// ===== TOAST VALIDATION =====
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+// ===== PILL SELECTION =====
+function selectCategory(cat, placeholder, el) {
+  document.querySelectorAll('#cat-pills .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tx-category').value = cat;
+  const descInput = document.getElementById('tx-desc');
+  if (!descInput.value.trim()) descInput.placeholder = placeholder;
+}
+
+function selectAmount(amount, el) {
+  document.querySelectorAll('#amount-pills .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tx-amount').value = amount;
+}
+
+function selectTerm(months, el) {
+  document.querySelectorAll('#term-pills .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('sv-term').value = months;
+}
+
+function selectInvType(type, el) {
+  document.querySelectorAll('#inv-type-pills .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('inv-type').value = type;
+}
+
 // ===== ACTIONS =====
 let txType = 'expense';
 function toggleTxType() {
   txType = txType === 'expense' ? 'income' : 'expense';
   document.getElementById('tx-type-btn').textContent = txType === 'expense' ? 'Chi tieu' : 'Thu nhap';
-  document.getElementById('tx-category').closest('.form-group').style.display = txType === 'income' ? 'none' : '';
+  const catSection = document.getElementById('cat-pills');
+  if (catSection) catSection.style.display = txType === 'income' ? 'none' : 'flex';
+  const catLabel = catSection ? catSection.previousElementSibling : null;
+  if (catLabel) catLabel.style.display = txType === 'income' ? 'none' : '';
 }
 
 function addTransaction() {
@@ -1032,12 +1122,15 @@ function addTransaction() {
   const amount = parseFloat(document.getElementById('tx-amount').value);
   const category = document.getElementById('tx-category').value;
   const date = document.getElementById('tx-date').value || now();
-  if (!desc || !amount) return;
+  if (!desc) { showToast('Vui long nhap mo ta giao dich'); return; }
+  if (!amount || amount <= 0) { showToast('Vui long nhap so tien hop le'); return; }
 
   DATA.transactions.push({ id: uid(), desc, amount, category: txType === 'income' ? 'Thu nhap' : category, type: txType, date });
   saveData(DATA);
   document.getElementById('tx-desc').value = '';
   document.getElementById('tx-amount').value = '';
+  document.querySelectorAll('#amount-pills .pill').forEach(p => p.classList.remove('active'));
+  showToast('Da them giao dich thanh cong!');
   renderAll();
 }
 
@@ -1053,7 +1146,10 @@ function addSaving() {
   const rate = parseFloat(document.getElementById('sv-rate').value);
   const term = parseInt(document.getElementById('sv-term').value);
   const startDate = document.getElementById('sv-start').value || now();
-  if (!bank || !amount || !rate || !term) return;
+  if (!bank) { showToast('Vui long nhap ten ngan hang'); return; }
+  if (!amount || amount <= 0) { showToast('Vui long nhap so tien goc'); return; }
+  if (!rate || rate <= 0) { showToast('Vui long nhap lai suat'); return; }
+  if (!term || term <= 0) { showToast('Vui long chon ky han'); return; }
 
   DATA.savings.push({ id: uid(), bank, amount, rate, term, startDate });
   saveData(DATA);
@@ -1061,6 +1157,7 @@ function addSaving() {
   document.getElementById('sv-amount').value = '';
   document.getElementById('sv-rate').value = '';
   document.getElementById('sv-term').value = '';
+  showToast('Da dang ky so tiet kiem thanh cong!');
   renderAll();
 }
 
@@ -1075,13 +1172,15 @@ function addInvestment() {
   const type = document.getElementById('inv-type').value;
   const capital = parseFloat(document.getElementById('inv-capital').value);
   const currentValue = parseFloat(document.getElementById('inv-current').value);
-  if (!name || !capital) return;
+  if (!name) { showToast('Vui long nhap ten / ma tai san'); return; }
+  if (!capital || capital <= 0) { showToast('Vui long nhap von dau tu'); return; }
 
   DATA.investments.push({ id: uid(), name, type, capital, currentValue: currentValue || capital });
   saveData(DATA);
   document.getElementById('inv-name').value = '';
   document.getElementById('inv-capital').value = '';
   document.getElementById('inv-current').value = '';
+  showToast('Da them tai san vao danh muc!');
   renderAll();
 }
 
@@ -1297,6 +1396,19 @@ function renderAll() {
 
 renderAll();
 initFirebase();
+
+// ===== EVENT DELEGATION FOR DELETE BUTTONS =====
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.delete-btn');
+  if (!btn) return;
+  e.stopPropagation();
+  const action = btn.getAttribute('data-action');
+  const id = btn.getAttribute('data-id');
+  if (!action || !id) return;
+  if (action === 'delete-tx') { deleteTx(id); }
+  else if (action === 'delete-saving') { deleteSaving(id); }
+  else if (action === 'delete-inv') { deleteInvestment(id); }
+});
 </script>
 </body>
 </html>
