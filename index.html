@@ -10,16 +10,16 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0C0C0E;--bg2:#131316;--bg3:#1a1a1f;--bg4:#222228;
-  --gold:#C4963C;--gold2:#d4a94e;--gold3:#e0bd6a;--gold-dim:rgba(196,150,60,.12);
-  --gold-glow:rgba(196,150,60,.08);
-  --text:#e8e4dc;--text2:#a09a8e;--text3:#6b6660;
-  --green:#4ade80;--green-dim:rgba(74,222,128,.12);
-  --red:#f87171;--red-dim:rgba(248,113,113,.12);
-  --yellow:#fbbf24;--yellow-dim:rgba(251,191,36,.12);
-  --blue:#60a5fa;--blue-dim:rgba(96,165,250,.12);
-  --purple:#a78bfa;--purple-dim:rgba(167,139,250,.12);
-  --pink:#f472b6;--pink-dim:rgba(244,114,182,.12);
+  --bg:#0C0C0E;--bg2:#161619;--bg3:#1a1a1f;--bg4:#222228;
+  --gold:#D4A94E;--gold2:#e0bd6a;--gold3:#ecd080;--gold-dim:rgba(212,169,78,.12);
+  --gold-glow:rgba(212,169,78,.08);
+  --text:#F0ECE4;--text2:#B5AFA3;--text3:#6b6660;
+  --green:#5BF09A;--green-dim:rgba(91,240,154,.12);
+  --red:#FF8585;--red-dim:rgba(255,133,133,.12);
+  --yellow:#FFCF40;--yellow-dim:rgba(255,207,64,.12);
+  --blue:#7AB8FF;--blue-dim:rgba(122,184,255,.12);
+  --purple:#B9A0FF;--purple-dim:rgba(185,160,255,.12);
+  --pink:#FF85C8;--pink-dim:rgba(255,133,200,.12);
   --radius:12px;--radius-sm:8px;
   --font-num:'Cormorant Garamond',serif;
   --font-body:'Jost',sans-serif;
@@ -77,8 +77,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-we
 .card-title .badge{font-size:.65rem;padding:3px 8px;border-radius:10px;letter-spacing:0;text-transform:none}
 
 /* Alert banner */
-.alert-banner{background:var(--red-dim);border:1px solid rgba(248,113,113,.2);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px}
-.alert-banner.warn{background:var(--yellow-dim);border-color:rgba(251,191,36,.2)}
+.alert-banner{background:var(--red-dim);border:1px solid rgba(255,133,133,.2);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px}
+.alert-banner.warn{background:var(--yellow-dim);border-color:rgba(255,207,64,.2)}
 .alert-icon{width:18px;height:18px;flex-shrink:0;margin-top:1px}
 .alert-text{font-size:.82rem;color:var(--text);line-height:1.5}
 .alert-text strong{color:var(--red);font-weight:500}
@@ -149,7 +149,7 @@ textarea{resize:vertical;min-height:60px}
 /* Tabs inside panels */
 .tabs{display:flex;gap:2px;margin-bottom:16px}
 .tabs button{flex:1;padding:8px;background:var(--bg3);border:1px solid transparent;color:var(--text3);font-family:var(--font-body);font-size:.78rem;border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition)}
-.tabs button.active{background:var(--gold-dim);color:var(--gold);border-color:rgba(196,150,60,.2)}
+.tabs button.active{background:var(--gold-dim);color:var(--gold);border-color:rgba(212,169,78,.2)}
 
 /* Savings */
 .saving-item{display:flex;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.03)}
@@ -184,7 +184,7 @@ textarea{resize:vertical;min-height:60px}
 /* AI Chat */
 .ai-messages{max-height:400px;overflow-y:auto;margin-bottom:14px;display:flex;flex-direction:column;gap:10px}
 .ai-msg{padding:12px 16px;border-radius:var(--radius);font-size:.85rem;line-height:1.6;max-width:92%}
-.ai-msg.user{background:var(--gold-dim);color:var(--gold3);align-self:flex-end;border:1px solid rgba(196,150,60,.15)}
+.ai-msg.user{background:var(--gold-dim);color:var(--gold3);align-self:flex-end;border:1px solid rgba(212,169,78,.15)}
 .ai-msg.assistant{background:var(--bg3);color:var(--text);align-self:flex-start;border:1px solid rgba(255,255,255,.04)}
 .ai-msg.assistant p{margin-bottom:8px}
 .ai-msg.assistant p:last-child{margin-bottom:0}
@@ -214,15 +214,15 @@ textarea{resize:vertical;min-height:60px}
 .setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.03)}
 .setting-label{font-size:.85rem;color:var(--text)}
 .setting-desc{font-size:.7rem;color:var(--text3);margin-top:2px}
-.section-divider{border:none;border-top:1px solid rgba(196,150,60,.15);margin:18px 0 14px}
+.section-divider{border:none;border-top:1px solid rgba(212,169,78,.15);margin:18px 0 14px}
 .section-title{font-size:.72rem;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.section-title::after{content:'';flex:1;height:1px;background:rgba(196,150,60,.15)}
+.section-title::after{content:'';flex:1;height:1px;background:rgba(212,169,78,.15)}
 
 /* Delete btn */
-.delete-btn{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;border-radius:4px;transition:var(--transition);opacity:0}
+.delete-btn{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;border-radius:4px;transition:var(--transition);opacity:.4;position:relative}
+.delete-btn svg{pointer-events:none;width:14px;height:14px}
 .tx-item:hover .delete-btn,.saving-item:hover .delete-btn,.inv-item:hover .delete-btn{opacity:1}
 .delete-btn:hover{color:var(--red)}
-.delete-btn svg{width:14px;height:14px}
 
 /* Empty state */
 .empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:.85rem}
@@ -234,6 +234,7 @@ textarea{resize:vertical;min-height:60px}
   .nav button{font-size:.72rem;padding:8px 4px}
   .sync-indicator span{display:none}
 }
+@media(max-width:600px){.delete-btn{opacity:.6}}
 
 /* Investment type colors */
 .inv-type-stock{background:var(--blue-dim);color:var(--blue)}
@@ -253,7 +254,7 @@ textarea{resize:vertical;min-height:60px}
 .cat-giving{background:var(--gold)}
 
 /* Total row */
-.total-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-top:1px solid rgba(196,150,60,.15);margin-top:4px}
+.total-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-top:1px solid rgba(212,169,78,.15);margin-top:4px}
 .total-label{font-size:.8rem;color:var(--gold);font-weight:400}
 .total-value{font-family:var(--font-num);font-size:1.1rem;font-weight:500;color:var(--gold)}
 
@@ -261,14 +262,14 @@ textarea{resize:vertical;min-height:60px}
 .pill-group{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .pill{padding:6px 14px;border-radius:20px;border:1px solid var(--bg4);background:var(--bg3);color:var(--text3);font-family:var(--font-body);font-size:.75rem;cursor:pointer;transition:var(--transition);white-space:nowrap}
 .pill:hover{border-color:var(--gold);color:var(--gold)}
-.pill.active{background:var(--gold-dim);color:var(--gold);border-color:rgba(196,150,60,.3)}
+.pill.active{background:var(--gold-dim);color:var(--gold);border-color:rgba(212,169,78,.3)}
 .pill-label{font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 
-/* Fix delete buttons - always visible on mobile, better visibility */
-.delete-btn{opacity:.4;position:relative}
-.delete-btn svg{pointer-events:none}
-.tx-item:hover .delete-btn,.saving-item:hover .delete-btn,.inv-item:hover .delete-btn{opacity:1}
-@media(max-width:600px){.delete-btn{opacity:.6}}
+/* Sub-item pills */
+.sub-pill-group{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;padding:8px 10px;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,.03)}
+.sub-pill{padding:5px 12px;border-radius:16px;border:1px solid var(--bg4);background:var(--bg);color:var(--text3);font-family:var(--font-body);font-size:.72rem;cursor:pointer;transition:var(--transition);white-space:nowrap}
+.sub-pill:hover{border-color:var(--gold);color:var(--gold)}
+.sub-pill.active{background:var(--gold-dim);color:var(--gold);border-color:rgba(212,169,78,.3)}
 
 /* Validation toast */
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;padding:12px 24px;border-radius:var(--radius);font-size:.82rem;font-family:var(--font-body);z-index:9999;animation:toastIn .3s ease;pointer-events:none}
@@ -292,7 +293,7 @@ textarea{resize:vertical;min-height:60px}
 <div class="app">
   <!-- Header -->
   <div class="header">
-    <div class="logo">WEALTH<span>Tai chinh gia dinh</span></div>
+    <div class="logo">WEALTH<span>Tài chính gia đình</span></div>
     <div class="header-right">
       <div class="sync-indicator" id="sync-status">
         <div class="sync-dot offline" id="sync-dot"></div>
@@ -306,10 +307,10 @@ textarea{resize:vertical;min-height:60px}
 
   <!-- Navigation -->
   <nav class="nav">
-    <button class="active" onclick="switchPanel('overview',this)">Tong quan</button>
-    <button onclick="switchPanel('spending',this)">Chi tieu</button>
-    <button onclick="switchPanel('invest',this)">Dau tu</button>
-    <button onclick="switchPanel('ai',this)">AI Tu van</button>
+    <button class="active" onclick="switchPanel('overview',this)">Tổng quan</button>
+    <button onclick="switchPanel('spending',this)">Chi tiêu</button>
+    <button onclick="switchPanel('invest',this)">Đầu tư</button>
+    <button onclick="switchPanel('ai',this)">AI Tư vấn</button>
   </nav>
 
   <!-- Panel 1: Overview -->
@@ -317,17 +318,17 @@ textarea{resize:vertical;min-height:60px}
     <div class="kpi-strip" id="kpi-strip"></div>
     <div id="budget-alerts"></div>
     <div class="card">
-      <div class="card-title">Dong tien 6 thang</div>
+      <div class="card-title">Dòng tiền 6 tháng</div>
       <div class="chart-container">
         <div class="chart-bars" id="cashflow-chart"></div>
       </div>
       <div class="chart-legend">
-        <span class="l-income">Thu nhap</span>
-        <span class="l-expense">Chi tieu</span>
+        <span class="l-income">Thu nhập</span>
+        <span class="l-expense">Chi tiêu</span>
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Giao dich gan nhat</div>
+      <div class="card-title">Giao dịch gần nhất</div>
       <div class="tx-list" id="recent-tx"></div>
     </div>
   </div>
@@ -335,46 +336,47 @@ textarea{resize:vertical;min-height:60px}
   <!-- Panel 2: Spending -->
   <div id="panel-spending" class="panel">
     <div class="card">
-      <div class="card-title">Phan bo ngan sach theo mo hinh 6 nhom</div>
+      <div class="card-title">Phân bổ ngân sách theo mô hình 6 nhóm</div>
       <div id="budget-bars"></div>
     </div>
     <div class="card">
       <div class="card-title">
-        Nhap giao dich
-        <button class="btn btn-sm btn-secondary" onclick="toggleTxType()" id="tx-type-btn">Chi tieu</button>
+        Nhập giao dịch
+        <button class="btn btn-sm btn-secondary" onclick="toggleTxType()" id="tx-type-btn">Chi tiêu</button>
       </div>
-      <div class="pill-label">Danh muc</div>
+      <div class="pill-label">Danh mục</div>
       <div class="pill-group" id="cat-pills">
-        <button class="pill active" onclick="selectCategory('Chi tieu thiet yeu','Tien cho, tien nha, dien nuoc',this)">Thiet yeu</button>
-        <button class="pill" onclick="selectCategory('Tiet kiem & Dau tu','Tiet kiem, dau tu',this)">Tiet kiem & DT</button>
-        <button class="pill" onclick="selectCategory('Quy du phong','Quy du phong',this)">Du phong</button>
-        <button class="pill" onclick="selectCategory('Giao duc','Hoc phi, sach vo',this)">Giao duc</button>
-        <button class="pill" onclick="selectCategory('Huong thu','An ngoai, giai tri',this)">Huong thu</button>
-        <button class="pill" onclick="selectCategory('Cho di & Xa hoi','Tu thien, qua tang',this)">Cho di</button>
+        <button class="pill active" data-cat="Chi tiêu thiết yếu">Thiết yếu</button>
+        <button class="pill" data-cat="Tiết kiệm & Đầu tư">Tiết kiệm & ĐT</button>
+        <button class="pill" data-cat="Quỹ dự phòng">Dự phòng</button>
+        <button class="pill" data-cat="Giáo dục">Giáo dục</button>
+        <button class="pill" data-cat="Hưởng thụ">Hưởng thụ</button>
+        <button class="pill" data-cat="Cho đi & Xã hội">Cho đi</button>
       </div>
+      <div class="sub-pill-group" id="sub-cat-pills"></div>
       <select id="tx-category" style="display:none">
-        <option value="Chi tieu thiet yeu">Chi tieu thiet yeu</option>
-        <option value="Tiet kiem & Dau tu">Tiet kiem & Dau tu</option>
-        <option value="Quy du phong">Quy du phong khan cap</option>
-        <option value="Giao duc">Giao duc & Phat trien</option>
-        <option value="Huong thu">Huong thu & Giai tri</option>
-        <option value="Cho di & Xa hoi">Cho di & Xa hoi</option>
+        <option value="Chi tiêu thiết yếu">Chi tiêu thiết yếu</option>
+        <option value="Tiết kiệm & Đầu tư">Tiết kiệm & Đầu tư</option>
+        <option value="Quỹ dự phòng">Quỹ dự phòng khẩn cấp</option>
+        <option value="Giáo dục">Giáo dục & Phát triển</option>
+        <option value="Hưởng thụ">Hưởng thụ & Giải trí</option>
+        <option value="Cho đi & Xã hội">Cho đi & Xã hội</option>
       </select>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Mo ta</label>
-          <input id="tx-desc" placeholder="VD: Tien cho, Tien nha...">
+          <label class="form-label">Mô tả</label>
+          <input id="tx-desc" placeholder="VD: Tiền chợ, Tiền nhà...">
         </div>
         <div class="form-group" style="max-width:140px">
-          <label class="form-label">Ngay</label>
+          <label class="form-label">Ngày</label>
           <input id="tx-date" type="date">
         </div>
       </div>
       <div class="form-group" style="margin-bottom:10px">
-        <label class="form-label">So tien</label>
+        <label class="form-label">Số tiền</label>
         <input id="tx-amount" type="number" placeholder="0">
       </div>
-      <div class="pill-label">Chon nhanh</div>
+      <div class="pill-label">Chọn nhanh</div>
       <div class="pill-group" id="amount-pills">
         <button class="pill" onclick="selectAmount(50000,this)">50K</button>
         <button class="pill" onclick="selectAmount(100000,this)">100K</button>
@@ -385,10 +387,10 @@ textarea{resize:vertical;min-height:60px}
         <button class="pill" onclick="selectAmount(5000000,this)">5M</button>
         <button class="pill" onclick="selectAmount(10000000,this)">10M</button>
       </div>
-      <button class="btn btn-primary btn-block" onclick="addTransaction()">Xac nhan</button>
+      <button class="btn btn-primary btn-block" onclick="addTransaction()">Xác nhận</button>
     </div>
     <div class="card">
-      <div class="card-title">Tat ca giao dich thang nay</div>
+      <div class="card-title">Tất cả giao dịch tháng này</div>
       <div class="tx-list" id="all-tx"></div>
     </div>
   </div>
@@ -396,23 +398,23 @@ textarea{resize:vertical;min-height:60px}
   <!-- Panel 3: Investment -->
   <div id="panel-invest" class="panel">
     <div class="tabs">
-      <button class="active" onclick="switchInvestTab('savings',this)">Tiet kiem ngan hang</button>
-      <button onclick="switchInvestTab('portfolio',this)">Danh muc dau tu</button>
+      <button class="active" onclick="switchInvestTab('savings',this)">Tiết kiệm ngân hàng</button>
+      <button onclick="switchInvestTab('portfolio',this)">Danh mục đầu tư</button>
     </div>
 
     <div id="tab-savings">
       <div class="card">
-        <div class="card-title">Them so tiet kiem</div>
+        <div class="card-title">Thêm sổ tiết kiệm</div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Ngan hang</label><input id="sv-bank" placeholder="VD: Techcombank"></div>
-          <div class="form-group" style="max-width:140px"><label class="form-label">So tien goc</label><input id="sv-amount" type="number" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Ngân hàng</label><input id="sv-bank" placeholder="VD: Techcombank"></div>
+          <div class="form-group" style="max-width:140px"><label class="form-label">Số tiền gốc</label><input id="sv-amount" type="number" placeholder="0"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Lai suat (%/nam)</label><input id="sv-rate" type="number" step="0.1" placeholder="5.5"></div>
-          <div class="form-group"><label class="form-label">Ky han (thang)</label><input id="sv-term" type="number" placeholder="12"></div>
-          <div class="form-group"><label class="form-label">Ngay gui</label><input id="sv-start" type="date"></div>
+          <div class="form-group"><label class="form-label">Lãi suất (%/năm)</label><input id="sv-rate" type="number" step="0.1" placeholder="5.5"></div>
+          <div class="form-group"><label class="form-label">Kỳ hạn (tháng)</label><input id="sv-term" type="number" placeholder="12"></div>
+          <div class="form-group"><label class="form-label">Ngày gửi</label><input id="sv-start" type="date"></div>
         </div>
-        <div class="pill-label">Chon ky han</div>
+        <div class="pill-label">Chọn kỳ hạn</div>
         <div class="pill-group" id="term-pills">
           <button class="pill" onclick="selectTerm(1,this)">1T</button>
           <button class="pill" onclick="selectTerm(3,this)">3T</button>
@@ -422,13 +424,13 @@ textarea{resize:vertical;min-height:60px}
           <button class="pill" onclick="selectTerm(24,this)">24T</button>
           <button class="pill" onclick="selectTerm(36,this)">36T</button>
         </div>
-        <button class="btn btn-primary btn-block" onclick="addSaving()">Dang ky so</button>
+        <button class="btn btn-primary btn-block" onclick="addSaving()">Đăng ký sổ</button>
       </div>
       <div class="card">
-        <div class="card-title">Danh sach so tiet kiem</div>
+        <div class="card-title">Danh sách sổ tiết kiệm</div>
         <div id="savings-list"></div>
         <div class="total-row" id="savings-total" style="display:none">
-          <span class="total-label">Tong tiet kiem</span>
+          <span class="total-label">Tổng tiết kiệm</span>
           <span class="total-value" id="savings-total-value"></span>
         </div>
       </div>
@@ -436,40 +438,40 @@ textarea{resize:vertical;min-height:60px}
 
     <div id="tab-portfolio" style="display:none">
       <div class="card">
-        <div class="card-title">Them tai san dau tu</div>
+        <div class="card-title">Thêm tài sản đầu tư</div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Ten / Ma</label><input id="inv-name" placeholder="VD: VNM, BTC"></div>
+          <div class="form-group"><label class="form-label">Tên / Mã</label><input id="inv-name" placeholder="VD: VNM, BTC"></div>
           <select id="inv-type" style="display:none">
-              <option value="stock">Co phieu</option>
+              <option value="stock">Cổ phiếu</option>
               <option value="crypto">Crypto</option>
-              <option value="realestate">Bat dong san</option>
+              <option value="realestate">Bất động sản</option>
               <option value="etf">ETF</option>
-              <option value="bond">Trai phieu</option>
-              <option value="gold">Vang</option>
-              <option value="other">Khac</option>
+              <option value="bond">Trái phiếu</option>
+              <option value="gold">Vàng</option>
+              <option value="other">Khác</option>
             </select>
         </div>
-        <div class="pill-label">Loai tai san</div>
+        <div class="pill-label">Loại tài sản</div>
         <div class="pill-group" id="inv-type-pills">
-          <button class="pill active" onclick="selectInvType('stock',this)">Co phieu</button>
+          <button class="pill active" onclick="selectInvType('stock',this)">Cổ phiếu</button>
           <button class="pill" onclick="selectInvType('crypto',this)">Crypto</button>
-          <button class="pill" onclick="selectInvType('realestate',this)">BDS</button>
+          <button class="pill" onclick="selectInvType('realestate',this)">BĐS</button>
           <button class="pill" onclick="selectInvType('etf',this)">ETF</button>
-          <button class="pill" onclick="selectInvType('bond',this)">Trai phieu</button>
-          <button class="pill" onclick="selectInvType('gold',this)">Vang</button>
-          <button class="pill" onclick="selectInvType('other',this)">Khac</button>
+          <button class="pill" onclick="selectInvType('bond',this)">Trái phiếu</button>
+          <button class="pill" onclick="selectInvType('gold',this)">Vàng</button>
+          <button class="pill" onclick="selectInvType('other',this)">Khác</button>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Von dau tu</label><input id="inv-capital" type="number" placeholder="0"></div>
-          <div class="form-group"><label class="form-label">Gia tri hien tai</label><input id="inv-current" type="number" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Vốn đầu tư</label><input id="inv-capital" type="number" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Giá trị hiện tại</label><input id="inv-current" type="number" placeholder="0"></div>
         </div>
-        <button class="btn btn-primary btn-block" onclick="addInvestment()">Them vao danh muc</button>
+        <button class="btn btn-primary btn-block" onclick="addInvestment()">Thêm vào danh mục</button>
       </div>
       <div class="card">
-        <div class="card-title">Danh muc dau tu</div>
+        <div class="card-title">Danh mục đầu tư</div>
         <div id="portfolio-list"></div>
         <div class="total-row" id="portfolio-total" style="display:none">
-          <span class="total-label">Tong gia tri</span>
+          <span class="total-label">Tổng giá trị</span>
           <span class="total-value" id="portfolio-total-value"></span>
         </div>
       </div>
@@ -480,21 +482,21 @@ textarea{resize:vertical;min-height:60px}
   <div id="panel-ai" class="panel">
     <div class="card" id="ai-alert-card" style="display:none"></div>
     <div class="card">
-      <div class="card-title">Co van tai chinh AI</div>
+      <div class="card-title">Cố vấn tài chính AI</div>
       <div class="ai-messages" id="ai-messages"></div>
       <div class="ai-suggestions" id="ai-suggestions"></div>
       <div class="ai-input-row">
-        <input id="ai-input" placeholder="Hoi ve tai chinh gia dinh..." onkeydown="if(event.key==='Enter')sendAI()">
-        <button class="btn btn-primary" onclick="sendAI()">Gui</button>
+        <input id="ai-input" placeholder="Hỏi về tài chính gia đình..." onkeydown="if(event.key==='Enter')sendAI()">
+        <button class="btn btn-primary" onclick="sendAI()">Gửi</button>
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Cai dat API</div>
+      <div class="card-title">Cài đặt API</div>
       <div class="form-group" style="margin-bottom:10px">
         <label class="form-label">Claude API Key</label>
         <input id="api-key" type="password" placeholder="sk-ant-..." onchange="saveApiKey()">
       </div>
-      <p style="font-size:.7rem;color:var(--text3)">Key duoc luu cuc bo tren trinh duyet, khong gui den ben thu ba.</p>
+      <p style="font-size:.7rem;color:var(--text3)">Key được lưu cục bộ trên trình duyệt, không gửi đến bên thứ ba.</p>
     </div>
   </div>
 </div>
@@ -503,31 +505,31 @@ textarea{resize:vertical;min-height:60px}
 <div class="modal-overlay" id="settings-modal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <h3>Cai dat</h3>
+    <h3>Cài đặt</h3>
 
     <div class="form-group" style="margin-bottom:14px">
-      <label class="form-label">Thu nhap hang thang</label>
+      <label class="form-label">Thu nhập hàng tháng</label>
       <input id="setting-income" type="number" placeholder="30000000" onchange="saveSettings()">
     </div>
     <div class="form-group" style="margin-bottom:20px">
-      <label class="form-label">Ten gia dinh</label>
-      <input id="setting-family" placeholder="Gia dinh Nguyen" onchange="saveSettings()">
+      <label class="form-label">Tên gia đình</label>
+      <input id="setting-family" placeholder="Gia đình Nguyễn" onchange="saveSettings()">
     </div>
 
     <!-- Firebase Sync Section -->
     <hr class="section-divider">
-    <div class="section-title">Dong bo gia dinh (Firebase)</div>
+    <div class="section-title">Đồng bộ gia đình (Firebase)</div>
 
     <div id="fb-setup-guide" class="card" style="background:var(--bg3);margin-bottom:14px">
-      <div class="card-title" style="margin-bottom:8px">Huong dan thiet lap (1 lan duy nhat)</div>
+      <div class="card-title" style="margin-bottom:8px">Hướng dẫn thiết lập (1 lần duy nhất)</div>
       <ol class="setup-steps">
-        <li>Vao <strong><a href="https://console.firebase.google.com" target="_blank" style="color:var(--gold)">console.firebase.google.com</a></strong></li>
-        <li>Tao project moi (ten tuy y, VD: "wealth-family")</li>
-        <li>Vao <strong>Build > Realtime Database</strong> > Create Database</li>
-        <li>Chon location <code>asia-southeast1</code> > Start in <strong>test mode</strong></li>
+        <li>Vào <strong><a href="https://console.firebase.google.com" target="_blank" style="color:var(--gold)">console.firebase.google.com</a></strong></li>
+        <li>Tạo project mới (tên tùy ý, VD: "wealth-family")</li>
+        <li>Vào <strong>Build > Realtime Database</strong> > Create Database</li>
+        <li>Chọn location <code>asia-southeast1</code> > Start in <strong>test mode</strong></li>
         <li>Copy URL database (VD: <code>https://xxx.firebaseio.com</code>)</li>
-        <li>Vao <strong>Project Settings</strong> (icon banh rang) > General > copy <code>API Key</code></li>
-        <li>Dien 3 truong ben duoi > bam <strong>Ket noi</strong></li>
+        <li>Vào <strong>Project Settings</strong> (icon bánh răng) > General > copy <code>API Key</code></li>
+        <li>Điền 3 trường bên dưới > bấm <strong>Kết nối</strong></li>
       </ol>
     </div>
 
@@ -540,24 +542,24 @@ textarea{resize:vertical;min-height:60px}
       <input id="fb-apikey" placeholder="AIzaSy...">
     </div>
     <div class="form-group" style="margin-bottom:14px">
-      <label class="form-label">Ma gia dinh (ca 2 vo chong nhap giong nhau)</label>
+      <label class="form-label">Mã gia đình (cả 2 vợ chồng nhập giống nhau)</label>
       <input id="fb-family-code" placeholder="VD: nguyen-family-2024">
     </div>
-    <button class="btn btn-primary btn-block" onclick="connectFirebase()">Ket noi Firebase</button>
+    <button class="btn btn-primary btn-block" onclick="connectFirebase()">Kết nối Firebase</button>
     <div id="fb-connection-status"></div>
 
     <hr class="section-divider">
 
     <div style="display:flex;gap:8px">
-      <button class="btn btn-secondary" style="flex:1" onclick="exportData()">Xuat du lieu</button>
-      <button class="btn btn-secondary" style="flex:1" onclick="importDataClick()">Nhap du lieu</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="exportData()">Xuất dữ liệu</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="importDataClick()">Nhập dữ liệu</button>
       <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
     </div>
     <div style="margin-top:16px">
-      <button class="btn btn-secondary btn-block" style="color:var(--red);border-color:rgba(248,113,113,.2)" onclick="resetAllData()">Xoa toan bo du lieu</button>
+      <button class="btn btn-secondary btn-block" style="color:var(--red);border-color:rgba(255,133,133,.2)" onclick="resetAllData()">Xóa toàn bộ dữ liệu</button>
     </div>
     <div style="margin-top:16px;text-align:center">
-      <button class="btn btn-primary" onclick="closeSettings()">Dong</button>
+      <button class="btn btn-primary" onclick="closeSettings()">Đóng</button>
     </div>
   </div>
 </div>
@@ -567,7 +569,7 @@ textarea{resize:vertical;min-height:60px}
 const STORAGE_KEY = 'wealth_data';
 const FB_CONFIG_KEY = 'wealth_firebase_config';
 const DEFAULT_DATA = {
-  settings: { monthlyIncome: 30000000, familyName: 'Gia dinh' },
+  settings: { monthlyIncome: 30000000, familyName: 'Gia đình' },
   transactions: [],
   savings: [],
   investments: [],
@@ -673,13 +675,13 @@ function updateSyncStatus(status) {
   dot.className = 'sync-dot';
   if (status === 'connected') {
     dot.classList.add('connected');
-    indicator.querySelector('span').textContent = 'Sync';
+    indicator.querySelector('span').textContent = 'Đồng bộ';
   } else if (status === 'syncing') {
     dot.classList.add('syncing');
-    indicator.querySelector('span').textContent = 'Dang dong bo...';
+    indicator.querySelector('span').textContent = 'Đang đồng bộ...';
   } else if (status === 'error') {
     dot.classList.add('offline');
-    indicator.querySelector('span').textContent = 'Loi ket noi';
+    indicator.querySelector('span').textContent = 'Lỗi kết nối';
   } else {
     dot.classList.add('offline');
     indicator.querySelector('span').textContent = 'Offline';
@@ -693,7 +695,7 @@ function connectFirebase() {
 
   if (!url || !familyCode) {
     document.getElementById('fb-connection-status').innerHTML =
-      '<div class="fb-status disconnected">Can nhap Database URL va Ma gia dinh</div>';
+      '<div class="fb-status disconnected">Cần nhập Database URL và Mã gia đình</div>';
     return;
   }
 
@@ -709,40 +711,51 @@ function connectFirebase() {
     firebase.app().delete().then(() => {
       startFirebase(config);
       document.getElementById('fb-connection-status').innerHTML =
-        '<div class="fb-status connected">Da ket noi thanh cong! Ca 2 thiet bi dung cung ma gia dinh se dong bo realtime.</div>';
+        '<div class="fb-status connected">Đã kết nối thành công! Cả 2 thiết bị dùng cùng mã gia đình sẽ đồng bộ realtime.</div>';
     });
   } else {
     startFirebase(config);
     document.getElementById('fb-connection-status').innerHTML =
-      '<div class="fb-status connected">Da ket noi thanh cong! Ca 2 thiet bi dung cung ma gia dinh se dong bo realtime.</div>';
+      '<div class="fb-status connected">Đã kết nối thành công! Cả 2 thiết bị dùng cùng mã gia đình sẽ đồng bộ realtime.</div>';
   }
 }
 
+// ===== CATEGORY SUB-ITEMS =====
+const CATEGORY_SUBS = {
+  'Chi tiêu thiết yếu': ['Tiền chợ','Tiền nhà/trả góp','Điện nước','Internet','Xăng xe','Y tế','Bảo hiểm'],
+  'Tiết kiệm & Đầu tư': ['Gửi tiết kiệm','Mua cổ phiếu','Quỹ đầu tư'],
+  'Quỹ dự phòng': ['Quỹ khẩn cấp','Bảo hiểm sức khỏe'],
+  'Giáo dục': ['Học phí con','Khóa học','Sách vở'],
+  'Hưởng thụ': ['Ăn ngoài','Du lịch','Mua sắm','Giải trí'],
+  'Cho đi & Xã hội': ['Từ thiện','Quà tặng','Giúp đỡ người thân'],
+};
+
 // ===== BUDGET TARGETS =====
 const BUDGET_TARGETS = {
-  'Chi tieu thiet yeu': { min: 0.50, max: 0.55, color: 'var(--blue)', colorClass: 'cat-essential', label: 'Chi tieu thiet yeu' },
-  'Tiet kiem & Dau tu': { min: 0.10, max: 0.20, color: 'var(--green)', colorClass: 'cat-saving', label: 'Tiet kiem & Dau tu' },
-  'Quy du phong': { min: 0.05, max: 0.10, color: 'var(--yellow)', colorClass: 'cat-emergency', label: 'Quy du phong khan cap' },
-  'Giao duc': { min: 0.08, max: 0.12, color: 'var(--purple)', colorClass: 'cat-education', label: 'Giao duc & Phat trien' },
-  'Huong thu': { min: 0.08, max: 0.12, color: 'var(--pink)', colorClass: 'cat-entertainment', label: 'Huong thu & Giai tri' },
-  'Cho di & Xa hoi': { min: 0.03, max: 0.07, color: 'var(--gold)', colorClass: 'cat-giving', label: 'Cho di & Xa hoi' },
+  'Chi tiêu thiết yếu': { min: 0.50, max: 0.55, color: 'var(--blue)', colorClass: 'cat-essential', label: 'Chi tiêu thiết yếu' },
+  'Tiết kiệm & Đầu tư': { min: 0.10, max: 0.20, color: 'var(--green)', colorClass: 'cat-saving', label: 'Tiết kiệm & Đầu tư' },
+  'Quỹ dự phòng': { min: 0.05, max: 0.10, color: 'var(--yellow)', colorClass: 'cat-emergency', label: 'Quỹ dự phòng khẩn cấp' },
+  'Giáo dục': { min: 0.08, max: 0.12, color: 'var(--purple)', colorClass: 'cat-education', label: 'Giáo dục & Phát triển' },
+  'Hưởng thụ': { min: 0.08, max: 0.12, color: 'var(--pink)', colorClass: 'cat-entertainment', label: 'Hưởng thụ & Giải trí' },
+  'Cho đi & Xã hội': { min: 0.03, max: 0.07, color: 'var(--gold)', colorClass: 'cat-giving', label: 'Cho đi & Xã hội' },
 };
 
 const INV_TYPES = {
-  stock: 'Co phieu', crypto: 'Crypto', realestate: 'BDS',
-  etf: 'ETF', bond: 'Trai phieu', gold: 'Vang', other: 'Khac'
+  stock: 'Cổ phiếu', crypto: 'Crypto', realestate: 'BĐS',
+  etf: 'ETF', bond: 'Trái phiếu', gold: 'Vàng', other: 'Khác'
 };
 
 // ===== UTILITY =====
 function fmt(n) {
   if (n == null || isNaN(n)) return '0';
   const abs = Math.abs(n);
-  if (abs >= 1e9) return (n / 1e9).toFixed(1) + 'B';
-  if (abs >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-  if (abs >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1e9) return sign + (abs / 1e9).toFixed(1) + 'B';
+  if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1) + 'M';
+  if (abs >= 1e3) return sign + (abs / 1e3).toFixed(1) + 'K';
   return n.toLocaleString('vi-VN');
 }
-function fmtFull(n) { return (n || 0).toLocaleString('vi-VN') + ' d'; }
+function fmtFull(n) { return (n || 0).toLocaleString('vi-VN') + ' đ'; }
 function fmtDate(d) { const dt = new Date(d); return dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }); }
 function now() { return new Date().toISOString().slice(0, 10); }
 function thisMonth() { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; }
@@ -787,10 +800,10 @@ function renderOverview() {
   const netWorth = totalSavings + totalInvest + (incomeMonth - expenseMonth);
 
   document.getElementById('kpi-strip').innerHTML = [
-    { label: 'Tai san rong', value: fmt(netWorth), cls: '', sub: fmtFull(netWorth) },
-    { label: 'Thu nhap thang', value: fmt(incomeMonth || DATA.settings.monthlyIncome), cls: 'positive', sub: fmtFull(incomeMonth || DATA.settings.monthlyIncome) },
-    { label: 'Chi tieu thang', value: fmt(expenseMonth), cls: 'negative', sub: fmtFull(expenseMonth) },
-    { label: 'Tiet kiem + DT', value: fmt(totalSavings + totalInvest), cls: '', sub: fmtFull(totalSavings + totalInvest) },
+    { label: 'Tài sản ròng', value: fmt(netWorth), cls: '', sub: fmtFull(netWorth) },
+    { label: 'Thu nhập tháng', value: fmt(incomeMonth || DATA.settings.monthlyIncome), cls: 'positive', sub: fmtFull(incomeMonth || DATA.settings.monthlyIncome) },
+    { label: 'Chi tiêu tháng', value: fmt(expenseMonth), cls: 'negative', sub: fmtFull(expenseMonth) },
+    { label: 'Tiết kiệm + ĐT', value: fmt(totalSavings + totalInvest), cls: '', sub: fmtFull(totalSavings + totalInvest) },
   ].map(k => `
     <div class="kpi-card">
       <div class="kpi-label">${k.label}</div>
@@ -811,13 +824,13 @@ function renderOverview() {
       alertsHtml += `
         <div class="alert-banner">
           <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <div class="alert-text"><strong>${target.label}</strong> vuot ${fmt(over)} — dang o ${(spending[cat] / income * 100).toFixed(0)}% thu nhap (muc tieu <=${(target.max * 100).toFixed(0)}%)</div>
+          <div class="alert-text"><strong>${target.label}</strong> vượt ${fmt(over)} — đang ở ${(spending[cat] / income * 100).toFixed(0)}% thu nhập (mục tiêu <=${(target.max * 100).toFixed(0)}%)</div>
         </div>`;
     } else if (status === 'warn') {
       alertsHtml += `
         <div class="alert-banner warn">
           <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <div class="alert-text"><strong>${target.label}</strong> gan vuot muc tieu — ${(spending[cat] / income * 100).toFixed(0)}% thu nhap</div>
+          <div class="alert-text"><strong>${target.label}</strong> gần vượt mục tiêu — ${(spending[cat] / income * 100).toFixed(0)}% thu nhập</div>
         </div>`;
     }
   });
@@ -827,7 +840,7 @@ function renderOverview() {
 
   const recent = [...DATA.transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
   document.getElementById('recent-tx').innerHTML = recent.length ? recent.map(t => txItemHtml(t)).join('') :
-    '<div class="empty-state">Chua co giao dich nao</div>';
+    '<div class="empty-state">Chưa có giao dịch nào</div>';
 }
 
 function renderCashflowChart() {
@@ -876,7 +889,7 @@ function txItemHtml(t) {
         <div class="tx-amount ${t.type}">${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}</div>
         <div class="tx-date">${fmtDate(t.date)}</div>
       </div>
-      <button class="delete-btn" data-action="delete-tx" data-id="${t.id}" title="Xoa">${deleteIcon}</button>
+      <button class="delete-btn" data-action="delete-tx" data-id="${t.id}" title="Xóa">${deleteIcon}</button>
     </div>`;
 }
 
@@ -911,19 +924,22 @@ function renderSpending() {
         </div>
         <div class="budget-details">
           <span>${fmtFull(spent)}</span>
-          <span>Muc tieu: ${(target.min * 100).toFixed(0)}-${(target.max * 100).toFixed(0)}% (${fmt(target.max * incomeMonth)})</span>
+          <span>Mục tiêu: ${(target.min * 100).toFixed(0)}-${(target.max * 100).toFixed(0)}% (${fmt(target.max * incomeMonth)})</span>
         </div>
-        ${status === 'over' ? `<div class="budget-warn-text over">Vuot ${fmtFull(spent - target.max * incomeMonth)} so voi muc tieu</div>` : ''}
-        ${status === 'warn' ? `<div class="budget-warn-text warn">Gan cham nguong muc tieu — can kiem soat</div>` : ''}
+        ${status === 'over' ? `<div class="budget-warn-text over">Vượt ${fmtFull(spent - target.max * incomeMonth)} so với mục tiêu</div>` : ''}
+        ${status === 'warn' ? `<div class="budget-warn-text warn">Gần chạm ngưỡng mục tiêu — cần kiểm soát</div>` : ''}
       </div>`;
   });
   document.getElementById('budget-bars').innerHTML = html;
 
   const allTx = txMonth.sort((a, b) => new Date(b.date) - new Date(a.date));
   document.getElementById('all-tx').innerHTML = allTx.length ? allTx.map(t => txItemHtml(t)).join('') :
-    '<div class="empty-state">Chua co giao dich trong thang nay</div>';
+    '<div class="empty-state">Chưa có giao dịch trong tháng này</div>';
 
   document.getElementById('tx-date').value = now();
+
+  // Render initial sub-pills
+  renderSubPills(currentCategory);
 }
 
 // ===== RENDER: INVEST =====
@@ -934,7 +950,7 @@ function renderInvest() {
   let totalInterest = 0;
 
   if (DATA.savings.length === 0) {
-    savingsHtml = '<div class="empty-state">Chua co so tiet kiem</div>';
+    savingsHtml = '<div class="empty-state">Chưa có sổ tiết kiệm</div>';
   } else {
     DATA.savings.forEach(s => {
       const start = new Date(s.startDate);
@@ -954,9 +970,9 @@ function renderInvest() {
           <div class="saving-info">
             <div class="saving-bank">${s.bank}</div>
             <div class="saving-meta">
-              <span>${s.rate}%/nam</span>
-              <span>${s.term} thang</span>
-              <span>Dao han: ${fmtDate(endDate)}</span>
+              <span>${s.rate}%/năm</span>
+              <span>${s.term} tháng</span>
+              <span>Đáo hạn: ${fmtDate(endDate)}</span>
             </div>
           </div>
           <div class="saving-progress">
@@ -965,8 +981,8 @@ function renderInvest() {
           </div>
           <div class="saving-right">
             <div class="saving-amount">${fmt(s.amount)}</div>
-            <div class="saving-interest">+${fmt(interest)} lai</div>
-            <span class="saving-status ${matured ? 'matured' : 'active'}">${matured ? 'Dao han' : 'Dang gui'}</span>
+            <div class="saving-interest">+${fmt(Math.round(interest))} lãi</div>
+            <span class="saving-status ${matured ? 'matured' : 'active'}">${matured ? 'Đáo hạn' : 'Đang gửi'}</span>
           </div>
           <button class="delete-btn" data-action="delete-saving" data-id="${s.id}">${deleteIcon}</button>
         </div>`;
@@ -976,7 +992,7 @@ function renderInvest() {
   const savTotal = document.getElementById('savings-total');
   if (DATA.savings.length > 0) {
     savTotal.style.display = 'flex';
-    document.getElementById('savings-total-value').textContent = fmtFull(totalSavingAmount + totalInterest);
+    document.getElementById('savings-total-value').textContent = fmtFull(Math.round(totalSavingAmount + totalInterest));
   } else {
     savTotal.style.display = 'none';
   }
@@ -986,7 +1002,7 @@ function renderInvest() {
   let totalPortValue = 0;
 
   if (DATA.investments.length === 0) {
-    portHtml = '<div class="empty-state">Chua co tai san dau tu</div>';
+    portHtml = '<div class="empty-state">Chưa có tài sản đầu tư</div>';
   } else {
     DATA.investments.forEach(inv => {
       const pnl = inv.currentValue - inv.capital;
@@ -997,7 +1013,7 @@ function renderInvest() {
           <span class="inv-type-badge inv-type-${inv.type}">${INV_TYPES[inv.type]}</span>
           <div class="inv-info">
             <div class="inv-name">${inv.name}</div>
-            <div class="inv-capital">Von: ${fmtFull(inv.capital)}</div>
+            <div class="inv-capital">Vốn: ${fmtFull(inv.capital)}</div>
           </div>
           <div class="inv-right">
             <div class="inv-value">${fmt(inv.currentValue)}</div>
@@ -1037,21 +1053,21 @@ function renderAI() {
   if (overCategories.length > 0) {
     alertCard.style.display = 'block';
     alertCard.innerHTML = `
-      <div class="card-title" style="color:var(--red)">Canh bao ngan sach</div>
+      <div class="card-title" style="color:var(--red)">Cảnh báo ngân sách</div>
       <p style="font-size:.82rem;color:var(--text2);line-height:1.5;margin-bottom:10px">
-        ${overCategories.map(([cat, t]) => `<strong style="color:var(--red)">${t.label}</strong>: ${(spending[cat] / income * 100).toFixed(0)}% thu nhap`).join(' — ')}
+        ${overCategories.map(([cat, t]) => `<strong style="color:var(--red)">${t.label}</strong>: ${(spending[cat] / income * 100).toFixed(0)}% thu nhập`).join(' — ')}
       </p>
-      <button class="btn btn-sm btn-secondary" onclick="askAIAboutBudget()">AI phan tich chi tieu vuot</button>`;
+      <button class="btn btn-sm btn-secondary" onclick="askAIAboutBudget()">AI phân tích chi tiêu vượt</button>`;
   } else {
     alertCard.style.display = 'none';
   }
 
   const suggestions = [
-    'Phan tich chi tieu thang nay — toi dang lech mo hinh o dau?',
-    'Danh gia suc khoe tai chinh va duong den tu do tai chinh',
-    'So sanh hieu qua tiet kiem ngan hang vs danh muc dau tu',
-    'Toi can dieu chinh gi de dat muc tieu tai chinh gia dinh?',
-    'Goi y kenh dau tu phu hop cho gia dinh Viet Nam thu nhap trung luu cao',
+    'Phân tích chi tiêu tháng này — tôi đang lệch mô hình ở đâu?',
+    'Đánh giá sức khỏe tài chính và đường đến tự do tài chính',
+    'So sánh hiệu quả tiết kiệm ngân hàng vs danh mục đầu tư',
+    'Tôi cần điều chỉnh gì để đạt mục tiêu tài chính gia đình?',
+    'Gợi ý kênh đầu tư phù hợp cho gia đình Việt Nam thu nhập trung lưu cao',
   ];
   document.getElementById('ai-suggestions').innerHTML = DATA.aiMessages.length === 0 ?
     suggestions.map(s => `<button class="ai-suggest-btn" onclick="askAI('${s.replace(/'/g, "\\'")}')">${s}</button>`).join('') : '';
@@ -1079,15 +1095,53 @@ function showToast(msg) {
   setTimeout(() => t.remove(), 2500);
 }
 
-// ===== PILL SELECTION =====
-function selectCategory(cat, placeholder, el) {
+// ===== CATEGORY & SUB-ITEM SELECTION =====
+let currentCategory = 'Chi tiêu thiết yếu';
+
+function selectCategory(cat) {
+  currentCategory = cat;
   document.querySelectorAll('#cat-pills .pill').forEach(p => p.classList.remove('active'));
-  el.classList.add('active');
+  document.querySelector(`#cat-pills .pill[data-cat="${cat}"]`).classList.add('active');
   document.getElementById('tx-category').value = cat;
-  const descInput = document.getElementById('tx-desc');
-  if (!descInput.value.trim()) descInput.placeholder = placeholder;
+  renderSubPills(cat);
+  // Clear sub-pill selection
+  document.querySelectorAll('#sub-cat-pills .sub-pill').forEach(p => p.classList.remove('active'));
 }
 
+function renderSubPills(cat) {
+  const subs = CATEGORY_SUBS[cat] || [];
+  const container = document.getElementById('sub-cat-pills');
+  if (subs.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'flex';
+  container.innerHTML = subs.map(s => `<button class="sub-pill" data-sub="${s}">${s}</button>`).join('');
+}
+
+function selectSubItem(subName, el) {
+  document.querySelectorAll('#sub-cat-pills .sub-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tx-desc').value = subName;
+}
+
+// Category pill click delegation
+document.getElementById('cat-pills').addEventListener('click', function(e) {
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  const cat = pill.getAttribute('data-cat');
+  if (cat) selectCategory(cat);
+});
+
+// Sub-pill click delegation
+document.getElementById('sub-cat-pills').addEventListener('click', function(e) {
+  const pill = e.target.closest('.sub-pill');
+  if (!pill) return;
+  const sub = pill.getAttribute('data-sub');
+  if (sub) selectSubItem(sub, pill);
+});
+
+// ===== PILL SELECTION =====
 function selectAmount(amount, el) {
   document.querySelectorAll('#amount-pills .pill').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
@@ -1110,9 +1164,11 @@ function selectInvType(type, el) {
 let txType = 'expense';
 function toggleTxType() {
   txType = txType === 'expense' ? 'income' : 'expense';
-  document.getElementById('tx-type-btn').textContent = txType === 'expense' ? 'Chi tieu' : 'Thu nhap';
+  document.getElementById('tx-type-btn').textContent = txType === 'expense' ? 'Chi tiêu' : 'Thu nhập';
   const catSection = document.getElementById('cat-pills');
+  const subSection = document.getElementById('sub-cat-pills');
   if (catSection) catSection.style.display = txType === 'income' ? 'none' : 'flex';
+  if (subSection) subSection.style.display = txType === 'income' ? 'none' : '';
   const catLabel = catSection ? catSection.previousElementSibling : null;
   if (catLabel) catLabel.style.display = txType === 'income' ? 'none' : '';
 }
@@ -1122,15 +1178,16 @@ function addTransaction() {
   const amount = parseFloat(document.getElementById('tx-amount').value);
   const category = document.getElementById('tx-category').value;
   const date = document.getElementById('tx-date').value || now();
-  if (!desc) { showToast('Vui long nhap mo ta giao dich'); return; }
-  if (!amount || amount <= 0) { showToast('Vui long nhap so tien hop le'); return; }
+  if (!desc) { showToast('Vui lòng nhập mô tả giao dịch'); return; }
+  if (!amount || amount <= 0) { showToast('Vui lòng nhập số tiền hợp lệ'); return; }
 
-  DATA.transactions.push({ id: uid(), desc, amount, category: txType === 'income' ? 'Thu nhap' : category, type: txType, date });
+  DATA.transactions.push({ id: uid(), desc, amount, category: txType === 'income' ? 'Thu nhập' : category, type: txType, date });
   saveData(DATA);
   document.getElementById('tx-desc').value = '';
   document.getElementById('tx-amount').value = '';
   document.querySelectorAll('#amount-pills .pill').forEach(p => p.classList.remove('active'));
-  showToast('Da them giao dich thanh cong!');
+  document.querySelectorAll('#sub-cat-pills .sub-pill').forEach(p => p.classList.remove('active'));
+  showToast('Đã thêm giao dịch thành công!');
   renderAll();
 }
 
@@ -1146,10 +1203,10 @@ function addSaving() {
   const rate = parseFloat(document.getElementById('sv-rate').value);
   const term = parseInt(document.getElementById('sv-term').value);
   const startDate = document.getElementById('sv-start').value || now();
-  if (!bank) { showToast('Vui long nhap ten ngan hang'); return; }
-  if (!amount || amount <= 0) { showToast('Vui long nhap so tien goc'); return; }
-  if (!rate || rate <= 0) { showToast('Vui long nhap lai suat'); return; }
-  if (!term || term <= 0) { showToast('Vui long chon ky han'); return; }
+  if (!bank) { showToast('Vui lòng nhập tên ngân hàng'); return; }
+  if (!amount || amount <= 0) { showToast('Vui lòng nhập số tiền gốc'); return; }
+  if (!rate || rate <= 0) { showToast('Vui lòng nhập lãi suất'); return; }
+  if (!term || term <= 0) { showToast('Vui lòng chọn kỳ hạn'); return; }
 
   DATA.savings.push({ id: uid(), bank, amount, rate, term, startDate });
   saveData(DATA);
@@ -1157,7 +1214,7 @@ function addSaving() {
   document.getElementById('sv-amount').value = '';
   document.getElementById('sv-rate').value = '';
   document.getElementById('sv-term').value = '';
-  showToast('Da dang ky so tiet kiem thanh cong!');
+  showToast('Đã đăng ký sổ tiết kiệm thành công!');
   renderAll();
 }
 
@@ -1172,15 +1229,15 @@ function addInvestment() {
   const type = document.getElementById('inv-type').value;
   const capital = parseFloat(document.getElementById('inv-capital').value);
   const currentValue = parseFloat(document.getElementById('inv-current').value);
-  if (!name) { showToast('Vui long nhap ten / ma tai san'); return; }
-  if (!capital || capital <= 0) { showToast('Vui long nhap von dau tu'); return; }
+  if (!name) { showToast('Vui lòng nhập tên / mã tài sản'); return; }
+  if (!capital || capital <= 0) { showToast('Vui lòng nhập vốn đầu tư'); return; }
 
   DATA.investments.push({ id: uid(), name, type, capital, currentValue: currentValue || capital });
   saveData(DATA);
   document.getElementById('inv-name').value = '';
   document.getElementById('inv-capital').value = '';
   document.getElementById('inv-current').value = '';
-  showToast('Da them tai san vao danh muc!');
+  showToast('Đã thêm tài sản vào danh mục!');
   renderAll();
 }
 
@@ -1200,27 +1257,27 @@ function buildContext() {
   const totalInvest = DATA.investments.reduce((s, v) => s + v.currentValue, 0);
 
   let ctx = `${DATA.settings.familyName}\n`;
-  ctx += `Thu nhap thang: ${fmtFull(income)}\n`;
-  ctx += `Tong tiet kiem ngan hang: ${fmtFull(totalSavings)} (${DATA.savings.length} so)\n`;
-  ctx += `Tong dau tu: ${fmtFull(totalInvest)} (${DATA.investments.length} tai san)\n\n`;
-  ctx += `Chi tieu thang nay:\n`;
+  ctx += `Thu nhập tháng: ${fmtFull(income)}\n`;
+  ctx += `Tổng tiết kiệm ngân hàng: ${fmtFull(totalSavings)} (${DATA.savings.length} sổ)\n`;
+  ctx += `Tổng đầu tư: ${fmtFull(totalInvest)} (${DATA.investments.length} tài sản)\n\n`;
+  ctx += `Chi tiêu tháng này:\n`;
   Object.entries(BUDGET_TARGETS).forEach(([cat, target]) => {
     const spent = spending[cat] || 0;
     const pct = income > 0 ? (spent / income * 100).toFixed(1) : '0';
     const status = getBudgetStatus(spent, income, cat);
-    const statusTag = status === 'over' ? '[VUOT]' : status === 'warn' ? '[GAN VUOT]' : '[TOT]';
-    ctx += `  ${statusTag} ${target.label}: ${fmtFull(spent)} (${pct}% — muc tieu ${(target.min * 100).toFixed(0)}-${(target.max * 100).toFixed(0)}%)\n`;
+    const statusTag = status === 'over' ? '[VƯỢT]' : status === 'warn' ? '[GẦN VƯỢT]' : '[TỐT]';
+    ctx += `  ${statusTag} ${target.label}: ${fmtFull(spent)} (${pct}% — mục tiêu ${(target.min * 100).toFixed(0)}-${(target.max * 100).toFixed(0)}%)\n`;
   });
 
   if (DATA.savings.length > 0) {
-    ctx += `\nChi tiet tiet kiem:\n`;
-    DATA.savings.forEach(s => ctx += `  ${s.bank}: ${fmtFull(s.amount)}, ${s.rate}%/nam, ${s.term} thang\n`);
+    ctx += `\nChi tiết tiết kiệm:\n`;
+    DATA.savings.forEach(s => ctx += `  ${s.bank}: ${fmtFull(s.amount)}, ${s.rate}%/năm, ${s.term} tháng\n`);
   }
   if (DATA.investments.length > 0) {
-    ctx += `\nChi tiet dau tu:\n`;
+    ctx += `\nChi tiết đầu tư:\n`;
     DATA.investments.forEach(inv => {
       const pnl = inv.currentValue - inv.capital;
-      ctx += `  ${inv.name} (${INV_TYPES[inv.type]}): von ${fmtFull(inv.capital)}, hien tai ${fmtFull(inv.currentValue)}, ${pnl >= 0 ? '+' : ''}${fmtFull(pnl)}\n`;
+      ctx += `  ${inv.name} (${INV_TYPES[inv.type]}): vốn ${fmtFull(inv.capital)}, hiện tại ${fmtFull(inv.currentValue)}, ${pnl >= 0 ? '+' : ''}${fmtFull(pnl)}\n`;
     });
   }
   return ctx;
@@ -1240,7 +1297,7 @@ async function askAI(question) {
 }
 
 function askAIAboutBudget() {
-  askAI('Phan tich cac danh muc chi tieu dang vuot ngan sach va dua ra khuyen nghi cat giam cu the.');
+  askAI('Phân tích các danh mục chi tiêu đang vượt ngân sách và đưa ra khuyến nghị cắt giảm cụ thể.');
 }
 
 async function sendAI() {
@@ -1253,7 +1310,7 @@ async function sendAI() {
 async function callAI(question) {
   const apiKey = DATA.apiKey;
   if (!apiKey) {
-    DATA.aiMessages.push({ role: 'assistant', content: 'Vui long nhap Claude API Key ben duoi de su dung AI tu van.' });
+    DATA.aiMessages.push({ role: 'assistant', content: 'Vui lòng nhập Claude API Key bên dưới để sử dụng AI tư vấn.' });
     saveData(DATA);
     renderAI();
     return;
@@ -1263,16 +1320,16 @@ async function callAI(question) {
   msgs.innerHTML += '<div class="ai-typing"><span></span><span></span><span></span></div>';
   msgs.scrollTop = msgs.scrollHeight;
 
-  const systemPrompt = `Ban la co van tai chinh ca nhan cao cap, phong cach private banker. Ngan gon, sac ben, thuc te. Tra loi tieng Viet.
-Khi phan tich, luon doi chieu voi mo hinh 6 nhom tai chinh gia dinh thong minh:
-- Chi tieu thiet yeu (50-55%)
-- Tiet kiem & Dau tu (10-20%)
-- Quy du phong khan cap (5-10%)
-- Giao duc & Phat trien (10%)
-- Huong thu & Giai tri (10%)
-- Cho di & Xa hoi (5%)
+  const systemPrompt = `Bạn là cố vấn tài chính cá nhân cao cấp, phong cách private banker. Ngắn gọn, sắc bén, thực tế. Trả lời tiếng Việt.
+Khi phân tích, luôn đối chiếu với mô hình 6 nhóm tài chính gia đình thông minh:
+- Chi tiêu thiết yếu (50-55%)
+- Tiết kiệm & Đầu tư (10-20%)
+- Quỹ dự phòng khẩn cấp (5-10%)
+- Giáo dục & Phát triển (10%)
+- Hưởng thụ & Giải trí (10%)
+- Cho đi & Xã hội (5%)
 
-Du lieu gia dinh:
+Dữ liệu gia đình:
 ${buildContext()}`;
 
   const messages = DATA.aiMessages.map(m => ({ role: m.role, content: m.content }));
@@ -1300,10 +1357,10 @@ ${buildContext()}`;
     }
 
     const data = await res.json();
-    const reply = data.content?.[0]?.text || 'Khong nhan duoc phan hoi.';
+    const reply = data.content?.[0]?.text || 'Không nhận được phản hồi.';
     DATA.aiMessages.push({ role: 'assistant', content: reply });
   } catch (e) {
-    DATA.aiMessages.push({ role: 'assistant', content: `Loi ket noi AI: ${e.message}` });
+    DATA.aiMessages.push({ role: 'assistant', content: `Lỗi kết nối AI: ${e.message}` });
   }
 
   saveData(DATA);
@@ -1344,7 +1401,7 @@ function openSettings() {
 function closeSettings() { document.getElementById('settings-modal').classList.remove('show'); }
 function saveSettings() {
   DATA.settings.monthlyIncome = parseFloat(document.getElementById('setting-income').value) || 30000000;
-  DATA.settings.familyName = document.getElementById('setting-family').value || 'Gia dinh';
+  DATA.settings.familyName = document.getElementById('setting-family').value || 'Gia đình';
   saveData(DATA);
   renderAll();
 }
@@ -1368,13 +1425,13 @@ function importData(e) {
       saveData(DATA);
       renderAll();
       closeSettings();
-    } catch { alert('File khong hop le'); }
+    } catch { alert('File không hợp lệ'); }
   };
   reader.readAsText(file);
 }
 
 function resetAllData() {
-  if (!confirm('Xoa toan bo du lieu?')) return;
+  if (!confirm('Xóa toàn bộ dữ liệu?')) return;
   DATA = structuredClone(DEFAULT_DATA);
   localStorage.removeItem(STORAGE_KEY);
   if (fbRef) fbRef.set(null);
