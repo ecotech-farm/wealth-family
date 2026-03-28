@@ -139,6 +139,27 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-we
 .calc-key.op{color:var(--gold);font-weight:600}
 .calc-key.eq{background:var(--gold);color:#fff;font-weight:600}
 .calc-key.eq:hover{background:var(--gold2)}
+/* Asset summary */
+.asset-total{text-align:center;padding:16px 0 12px}
+.asset-total-label{font-size:.78rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.asset-total-value{font-family:var(--font-num);font-size:2.2rem;font-weight:600;color:var(--gold)}
+.alloc-item{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.85rem}
+.alloc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.alloc-bar-track{flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.alloc-bar-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.alloc-info{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.alloc-name{font-size:.82rem;color:var(--text2)}
+.alloc-value{font-family:var(--font-num);font-weight:500;color:var(--text);font-size:.85rem}
+.alloc-pct{font-family:var(--font-num);font-size:.75rem;color:var(--text3);margin-left:4px}
+/* Close position / brokerage */
+.btn-close-pos{font-size:.78rem;padding:5px 12px;border:1px solid var(--gold);color:var(--gold);background:transparent;border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition)}
+.btn-close-pos:hover{background:var(--gold);color:#fff}
+.realized-item{padding:8px 0;border-bottom:1px solid var(--bg3);font-size:.85rem;display:flex;justify-content:space-between;align-items:center}
+.realized-item:last-child{border-bottom:none}
+.brk-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bg3);font-size:.88rem}
+.brk-item:last-child{border-bottom:none}
+.brk-cash{font-family:var(--font-num);font-weight:500;color:var(--blue);font-size:1rem}
+
 .re-progress{margin:10px 0}
 .re-progress-bar{height:10px;background:var(--bg4);border-radius:5px;overflow:hidden}
 .re-progress-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--gold));border-radius:5px;transition:width .4s ease}
@@ -275,6 +296,14 @@ textarea.form-input{resize:vertical;min-height:60px}
 
   <!-- ===== OVERVIEW PANEL ===== -->
   <div class="panel active" id="panel-overview">
+    <div class="card" id="assetSummaryCard">
+      <div class="card-title">Tổng quan tài sản</div>
+      <div class="asset-total">
+        <div class="asset-total-label">Tổng tài sản ròng</div>
+        <div class="asset-total-value" id="assetTotalValue">0</div>
+      </div>
+      <div id="assetAllocationBars"></div>
+    </div>
     <div class="kpi-strip" id="kpiStrip"></div>
     <div id="alertBanners"></div>
     <div class="card">
@@ -385,6 +414,15 @@ textarea.form-input{resize:vertical;min-height:60px}
     <!-- Portfolio Tab -->
     <div class="tab-content" id="tab-portfolio">
       <div class="card">
+        <div class="card-title">Tài khoản chứng khoán</div>
+        <div id="brokerageList"></div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <input class="form-input" id="brkName" placeholder="Tên TKCK (VPS, SSI...)" style="flex:1">
+          <input class="form-input money" id="brkCash" placeholder="Số dư" inputmode="numeric" style="flex:1">
+          <button type="button" class="btn btn-gold" onclick="addBrokerage()" style="white-space:nowrap;padding:10px 16px">+ TKCK</button>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-title">Thêm khoản đầu tư</div>
         <div class="form-group">
           <label class="form-label">Tên tài sản</label>
@@ -430,6 +468,11 @@ textarea.form-input{resize:vertical;min-height:60px}
       <div class="card">
         <div class="card-title">Chi tiết các lần mua</div>
         <div id="investList"></div>
+      </div>
+      <div class="card" id="realizedPnLCard" style="display:none">
+        <div class="card-title">Lịch sử chốt lời / cắt lỗ</div>
+        <div id="realizedPnLList"></div>
+        <div id="realizedPnLSummary" style="margin-top:10px"></div>
       </div>
     </div>
 
@@ -588,6 +631,8 @@ let DATA = {
   savings: [],
   investments: [],
   realEstates: [],
+  brokerageAccounts: [],
+  realizedPnL: [],
   aiApiKey: '',
   chatHistory: []
 };
@@ -596,6 +641,7 @@ let selectedCat = null;
 let selectedSubCat = null;
 let txType = 'expense';
 let selectedInvType = 'stock';
+let editingInvId = null;
 let supaClient = null;
 let realtimeChannel = null;
 let chatHistory = [];
@@ -603,11 +649,19 @@ let chatHistory = [];
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
   loadLocal();
+  migrateData();
   chatHistory = DATA.chatHistory || [];
   initSupabase();
   initUI();
   renderAll();
 });
+
+function migrateData() {
+  if (!DATA.realEstates) DATA.realEstates = [];
+  if (!DATA.brokerageAccounts) DATA.brokerageAccounts = [];
+  if (!DATA.realizedPnL) DATA.realizedPnL = [];
+  DATA.realEstates.forEach(r => { if (!r.payments) r.payments = []; });
+}
 
 function loadLocal() {
   try {
@@ -657,6 +711,8 @@ async function connectFamily(code) {
       DATA.savings = remote.savings || DATA.savings;
       DATA.investments = remote.investments || DATA.investments;
       DATA.realEstates = remote.realEstates || DATA.realEstates;
+      DATA.brokerageAccounts = remote.brokerageAccounts || DATA.brokerageAccounts || [];
+      DATA.realizedPnL = remote.realizedPnL || DATA.realizedPnL || [];
       if (remote.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
       if (remote.chatHistory) DATA.chatHistory = remote.chatHistory;
       if (remote.settings) {
@@ -685,6 +741,8 @@ async function connectFamily(code) {
           DATA.savings = remote.savings || [];
           DATA.investments = remote.investments || [];
           DATA.realEstates = remote.realEstates || [];
+          DATA.brokerageAccounts = remote.brokerageAccounts || [];
+          DATA.realizedPnL = remote.realizedPnL || [];
           if (remote.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
           if (remote.chatHistory) {
             DATA.chatHistory = remote.chatHistory;
@@ -725,6 +783,8 @@ async function syncToSupabase() {
       savings: DATA.savings,
       investments: DATA.investments,
       realEstates: DATA.realEstates,
+      brokerageAccounts: DATA.brokerageAccounts || [],
+      realizedPnL: DATA.realizedPnL || [],
       aiApiKey: DATA.aiApiKey,
       chatHistory: DATA.chatHistory
     };
@@ -936,6 +996,10 @@ function initUI() {
       DATA.investments = DATA.investments.filter(i => i.id !== id);
       saveLocal(); renderAll();
       showToast('Đã xóa khoản đầu tư', 'success');
+    } else if (action === 'edit-inv') {
+      editInvestment(id);
+    } else if (action === 'close-position') {
+      closePosition(id);
     }
   });
 }
@@ -1022,6 +1086,7 @@ function renderInvTypePills() {
 // ===== RENDER ALL =====
 function renderAll() {
   updateFamilyDisplay();
+  renderAssetSummary();
   renderKPI();
   renderAlerts();
   renderCashflow();
@@ -1029,7 +1094,9 @@ function renderAll() {
   renderBudgetBars();
   renderMonthTx();
   renderSavings();
+  renderBrokerageAccounts();
   renderInvestments();
+  renderRealizedPnL();
   renderRealEstates();
 }
 
@@ -1106,23 +1173,54 @@ function getCatSpending(monthKey, catId) {
 }
 
 function getTotalSavingsInvestments() {
+  return calcTotalAssets();
+}
+
+function calcTotalAssets() {
   let total = 0;
-  DATA.savings.forEach(s => total += s.amount);
+  // Tiết kiệm: gốc + lãi tích lũy
+  DATA.savings.forEach(s => { total += s.amount + calcAccruedInterest(s); });
+  // Đầu tư: giá thị trường hiện tại
   DATA.investments.forEach(i => total += i.currentValue);
-  (DATA.realEstates || []).forEach(r => total += r.currentValue || 0);
+  // BĐS: tiền THỰC ĐÃ CHI (sum payments), không phải giá HĐ
+  (DATA.realEstates || []).forEach(r => {
+    total += (r.payments || []).reduce((s, p) => s + p.amount, 0);
+  });
+  // Tiền mặt tài khoản chứng khoán
+  (DATA.brokerageAccounts || []).forEach(b => total += b.cashBalance || 0);
   return total;
 }
 
-function getNetWorth() {
-  // Sum of savings principal + investment current values + real estate
-  let total = 0;
-  DATA.savings.forEach(s => {
-    total += s.amount;
-    total += calcAccruedInterest(s);
+function calcAssetAllocation() {
+  const alloc = {};
+  // Tiết kiệm
+  let savTotal = 0;
+  DATA.savings.forEach(s => { savTotal += s.amount + calcAccruedInterest(s); });
+  if (savTotal > 0) alloc['savings'] = { name: 'Tiết kiệm', amount: savTotal, color: 'var(--green)', colorDim: 'var(--green-dim)' };
+  // Đầu tư theo loại
+  DATA.investments.forEach(i => {
+    const type = getInvTypeById(i.type) || INV_TYPES[6];
+    if (!alloc[i.type]) alloc[i.type] = { name: type.name, amount: 0, color: type.color, colorDim: type.colorDim };
+    alloc[i.type].amount += i.currentValue;
   });
-  DATA.investments.forEach(i => total += i.currentValue);
-  (DATA.realEstates || []).forEach(r => total += r.currentValue || 0);
-  return total;
+  // BĐS: tiền thực đã chi
+  let reTotal = 0;
+  (DATA.realEstates || []).forEach(r => {
+    reTotal += (r.payments || []).reduce((s, p) => s + p.amount, 0);
+  });
+  if (reTotal > 0) alloc['re_paid'] = { name: 'BĐS (đã chi)', amount: reTotal, color: 'var(--green)', colorDim: 'var(--green-dim)' };
+  // Tiền mặt TKCK
+  let brkTotal = 0;
+  (DATA.brokerageAccounts || []).forEach(b => brkTotal += b.cashBalance || 0);
+  if (brkTotal > 0) alloc['brokerage'] = { name: 'Tiền mặt CK', amount: brkTotal, color: 'var(--blue)', colorDim: 'var(--blue-dim)' };
+  // Filter out zero
+  const result = Object.values(alloc).filter(a => a.amount > 0);
+  result.sort((a, b) => b.amount - a.amount);
+  return result;
+}
+
+function getNetWorth() {
+  return calcTotalAssets();
 }
 
 function calcMaturityInterest(sav) {
@@ -1161,18 +1259,41 @@ function isSavingsMatured(sav) {
 }
 
 // ===== KPI =====
+function renderAssetSummary() {
+  const total = calcTotalAssets();
+  document.getElementById('assetTotalValue').textContent = smartFormat(total);
+
+  const alloc = calcAssetAllocation();
+  const container = document.getElementById('assetAllocationBars');
+  if (!alloc.length) { container.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:.82rem;padding:8px 0">Chưa có tài sản nào</div>'; return; }
+
+  container.innerHTML = alloc.map(a => {
+    const pct = total > 0 ? (a.amount / total * 100) : 0;
+    return `<div class="alloc-item">
+      <div class="alloc-dot" style="background:${a.color}"></div>
+      <div style="flex:1">
+        <div class="alloc-info">
+          <span class="alloc-name">${a.name}</span>
+          <span><span class="alloc-value">${smartFormat(a.amount)}</span><span class="alloc-pct">(${pct.toFixed(1)}%)</span></span>
+        </div>
+        <div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:${pct}%;background:${a.color}"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function renderKPI() {
   const mk = currentMonthKey();
   const totals = getMonthTotals(mk);
   const income = getMonthlyIncome() || totals.income;
-  const netWorth = getNetWorth();
-  const savInv = getTotalSavingsInvestments();
+  const remaining = income - totals.expense;
+  const remColor = remaining >= 0 ? 'green' : 'red';
+  const remSign = remaining >= 0 ? '+' : '-';
 
   document.getElementById('kpiStrip').innerHTML = `
-    <div class="kpi"><div class="kpi-label">Tài sản ròng</div><div class="kpi-value">${smartFormat(netWorth)}</div></div>
     <div class="kpi"><div class="kpi-label">Thu nhập tháng</div><div class="kpi-value green">${smartFormat(income)}</div></div>
     <div class="kpi"><div class="kpi-label">Chi tiêu tháng</div><div class="kpi-value red">${smartFormat(totals.expense)}</div></div>
-    <div class="kpi"><div class="kpi-label">Tiết kiệm + ĐT</div><div class="kpi-value">${smartFormat(savInv)}</div></div>
+    <div class="kpi" style="grid-column:span 2"><div class="kpi-label">Còn lại tháng này</div><div class="kpi-value ${remColor}">${remSign}${smartFormat(Math.abs(remaining))}</div></div>
   `;
 }
 
@@ -1490,10 +1611,39 @@ function renderInvestments() {
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div class="invest-pnl ${pnl >= 0 ? 'pos' : 'neg'}">${sign}${formatMoney(Math.round(pnl))} (${sign}${pnlPct.toFixed(1)}%)</div>
-        <button class="tx-del" data-action="del-inv" data-id="${inv.id}">&times;</button>
+        <div style="display:flex;gap:4px">
+          ${inv.type === 'stock' ? `<button class="btn-close-pos" data-action="close-position" data-id="${inv.id}">Chốt phiên</button>` : ''}
+          <button class="tx-del" data-action="edit-inv" data-id="${inv.id}" style="color:var(--gold)" title="Sửa">&#9998;</button>
+          <button class="tx-del" data-action="del-inv" data-id="${inv.id}">&times;</button>
+        </div>
       </div>
     </div>`;
   }).join('');
+}
+
+function editInvestment(id) {
+  const inv = DATA.investments.find(i => i.id === id);
+  if (!inv) return;
+  // Fill form
+  document.getElementById('invName').value = inv.name;
+  document.getElementById('invQty').value = inv.qty;
+  document.getElementById('invUnit').value = inv.unit || '';
+  document.getElementById('invBuyPrice').value = formatMoney(inv.buyPrice);
+  document.getElementById('invCurrentPrice').value = formatMoney(inv.currentPrice);
+  document.getElementById('invDate').value = inv.date;
+  selectedInvType = inv.type;
+  renderInvTypePills();
+  editingInvId = id;
+  // Change button text
+  const btn = document.querySelector('button[onclick="addInvestment()"]');
+  if (btn) { btn.textContent = 'Cập nhật đầu tư'; btn.style.background = 'var(--blue)'; }
+  // Switch to portfolio tab and scroll
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.tab-btn[data-tab="portfolio"]').classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-portfolio').classList.add('active');
+  document.getElementById('invName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  updateInvPreview();
 }
 
 function addInvestment() {
@@ -1512,13 +1662,25 @@ function addInvestment() {
   const capital = Math.round(qty * buyPrice);
   const currentValue = Math.round(qty * currentPrice);
 
-  DATA.investments.push({
-    id: uid(), name, type: selectedInvType, qty, unit,
-    buyPrice, currentPrice, capital, currentValue, date
-  });
+  if (editingInvId) {
+    // Update existing
+    const inv = DATA.investments.find(i => i.id === editingInvId);
+    if (inv) {
+      Object.assign(inv, { name, type: selectedInvType, qty, unit, buyPrice, currentPrice, capital, currentValue, date });
+    }
+    editingInvId = null;
+    showToast('Đã cập nhật khoản đầu tư', 'success');
+    const btn = document.querySelector('button[onclick="addInvestment()"]');
+    if (btn) { btn.textContent = 'Thêm đầu tư'; btn.style.background = ''; }
+  } else {
+    DATA.investments.push({
+      id: uid(), name, type: selectedInvType, qty, unit,
+      buyPrice, currentPrice, capital, currentValue, date
+    });
+    showToast('Đã thêm khoản đầu tư', 'success');
+  }
   saveLocal();
   renderAll();
-  showToast('Đã thêm khoản đầu tư', 'success');
 
   document.getElementById('invName').value = '';
   document.getElementById('invQty').value = '';
@@ -1526,6 +1688,132 @@ function addInvestment() {
   document.getElementById('invBuyPrice').value = '';
   document.getElementById('invCurrentPrice').value = '';
   updateInvPreview();
+}
+
+// ===== BROKERAGE ACCOUNTS =====
+function addBrokerage() {
+  const name = document.getElementById('brkName').value.trim();
+  const cash = parseMoney(document.getElementById('brkCash').value);
+  if (!name) { showToast('Vui lòng nhập tên TKCK', 'error'); return; }
+  DATA.brokerageAccounts = DATA.brokerageAccounts || [];
+  DATA.brokerageAccounts.push({ id: uid(), name, cashBalance: cash });
+  saveLocal(); renderAll();
+  showToast('Đã thêm TKCK', 'success');
+  document.getElementById('brkName').value = '';
+  document.getElementById('brkCash').value = '';
+}
+
+function updateBrokerageCash(id) {
+  const input = document.getElementById('brkCashEdit-' + id);
+  if (!input) return;
+  const brk = (DATA.brokerageAccounts || []).find(b => b.id === id);
+  if (!brk) return;
+  brk.cashBalance = parseMoney(input.value);
+  saveLocal(); renderAll();
+  showToast('Đã cập nhật số dư', 'success');
+}
+
+function deleteBrokerage(id) {
+  DATA.brokerageAccounts = (DATA.brokerageAccounts || []).filter(b => b.id !== id);
+  saveLocal(); renderAll();
+}
+
+function renderBrokerageAccounts() {
+  const container = document.getElementById('brokerageList');
+  if (!container) return;
+  const items = DATA.brokerageAccounts || [];
+  if (!items.length) { container.innerHTML = '<div style="color:var(--text3);font-size:.82rem">Chưa có TKCK. Thêm để theo dõi tiền mặt trong tài khoản CK.</div>'; return; }
+
+  container.innerHTML = items.map(b => `
+    <div class="brk-item">
+      <div><b>${b.name}</b></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input class="form-input money" id="brkCashEdit-${b.id}" value="${formatMoney(b.cashBalance)}"
+          inputmode="numeric" style="width:140px;padding:6px 10px;font-size:.9rem;text-align:right">
+        <button type="button" onclick="updateBrokerageCash('${b.id}')" style="background:var(--gold);color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:.78rem">Lưu</button>
+        <button type="button" onclick="deleteBrokerage('${b.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.85rem">&times;</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Bind money format
+  container.querySelectorAll('.form-input.money').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^\d]/g, '');
+      e.target.value = raw ? formatMoney(parseInt(raw)) : '';
+    });
+  });
+}
+
+// ===== CLOSE POSITION (CHỐT PHIÊN) =====
+function closePosition(id) {
+  const inv = DATA.investments.find(i => i.id === id);
+  if (!inv) return;
+  const pnl = inv.currentValue - inv.capital;
+  const pnlSign = pnl >= 0 ? '+' : '-';
+  const pnlText = pnl >= 0 ? 'LÃI' : 'LỖ';
+  const msg = `Chốt phiên: ${inv.name}\nVốn: ${formatMoney(inv.capital)}\nGiá trị: ${formatMoney(inv.currentValue)}\n${pnlText}: ${pnlSign}${formatMoney(Math.abs(pnl))}\n\nTiền bán (${formatMoney(inv.currentValue)}) sẽ được cộng vào TKCK nếu có.\nXác nhận chốt?`;
+  if (!confirm(msg)) return;
+
+  // Archive to realized PnL
+  DATA.realizedPnL = DATA.realizedPnL || [];
+  DATA.realizedPnL.push({
+    id: uid(),
+    investmentId: inv.id,
+    name: inv.name,
+    type: inv.type,
+    qty: inv.qty,
+    unit: inv.unit,
+    buyPrice: inv.buyPrice,
+    sellPrice: inv.currentPrice,
+    capital: inv.capital,
+    proceeds: inv.currentValue,
+    pnl: pnl,
+    closedAt: new Date().toISOString()
+  });
+
+  // Add proceeds to first brokerage account if exists
+  if (DATA.brokerageAccounts && DATA.brokerageAccounts.length > 0) {
+    DATA.brokerageAccounts[0].cashBalance += inv.currentValue;
+    showToast(`Đã cộng ${formatMoney(inv.currentValue)} vào ${DATA.brokerageAccounts[0].name}`, 'success');
+  }
+
+  // Remove from active investments
+  DATA.investments = DATA.investments.filter(i => i.id !== id);
+  saveLocal(); renderAll();
+  showToast(`Đã chốt ${inv.name}: ${pnlText} ${pnlSign}${formatMoney(Math.abs(pnl))}`, pnl >= 0 ? 'success' : 'error');
+}
+
+function renderRealizedPnL() {
+  const card = document.getElementById('realizedPnLCard');
+  const list = document.getElementById('realizedPnLList');
+  const summary = document.getElementById('realizedPnLSummary');
+  if (!card || !list) return;
+  const items = DATA.realizedPnL || [];
+  if (!items.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  list.innerHTML = items.slice().reverse().map(r => {
+    const sign = r.pnl >= 0 ? '+' : '-';
+    const color = r.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    const d = new Date(r.closedAt);
+    const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    return `<div class="realized-item">
+      <div>
+        <div style="font-weight:500">${r.name}</div>
+        <div style="font-size:.72rem;color:var(--text3)">${dateStr} | ${r.qty} ${r.unit || ''} | Mua: ${formatMoney(r.buyPrice)} → Bán: ${formatMoney(r.sellPrice)}</div>
+      </div>
+      <div style="font-family:var(--font-num);font-weight:600;color:${color}">${sign}${formatMoney(Math.abs(r.pnl))}</div>
+    </div>`;
+  }).join('');
+
+  const totalPnL = items.reduce((s, r) => s + r.pnl, 0);
+  const totalSign = totalPnL >= 0 ? '+' : '-';
+  const totalColor = totalPnL >= 0 ? 'var(--green)' : 'var(--red)';
+  summary.innerHTML = `<div style="display:flex;justify-content:space-between;font-size:.9rem;padding-top:8px;border-top:2px solid var(--bg4)">
+    <span style="color:var(--text2)">Tổng lãi/lỗ đã chốt:</span>
+    <span style="font-family:var(--font-num);font-weight:600;color:${totalColor}">${totalSign}${formatMoney(Math.abs(totalPnL))}</span>
+  </div>`;
 }
 
 // ===== REAL ESTATE =====
@@ -1717,7 +2005,9 @@ Thông tin tài chính hiện tại:
 - Phân bổ ngân sách:\n${budgetInfo}
 - Tiết kiệm: ${DATA.savings.length} sổ, tổng ${formatMoney(DATA.savings.reduce((s,i)=>s+i.amount,0))}
 - Đầu tư: ${DATA.investments.length} khoản, tổng ${formatMoney(DATA.investments.reduce((s,i)=>s+i.currentValue,0))}
-- BĐS: ${(DATA.realEstates||[]).length} căn, tổng ${formatMoney((DATA.realEstates||[]).reduce((s,r)=>s+r.currentValue,0))}
+- BĐS: ${(DATA.realEstates||[]).length} căn, đã chi ${formatMoney((DATA.realEstates||[]).reduce((s,r)=>s+(r.payments||[]).reduce((ss,p)=>ss+p.amount,0),0))}
+- TKCK: ${(DATA.brokerageAccounts||[]).length} TK, tiền mặt ${formatMoney((DATA.brokerageAccounts||[]).reduce((s,b)=>s+(b.cashBalance||0),0))}
+- Đã chốt: ${(DATA.realizedPnL||[]).length} lệnh, lãi/lỗ ${formatMoney((DATA.realizedPnL||[]).reduce((s,r)=>s+r.pnl,0))}
 
 Trả lời ngắn gọn, thực tế, có thể hành động.`;
 
