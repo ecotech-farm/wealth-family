@@ -124,6 +124,21 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-we
 .form-input{width:100%;padding:10px 14px;border:1px solid var(--bg4);border-radius:var(--radius-sm);font-family:var(--font-body);font-size:.88rem;color:var(--text);background:var(--bg2);transition:var(--transition);outline:none}
 .form-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
 .form-input.money{font-family:var(--font-num);font-size:1rem;font-weight:500}
+.calc-wrap{position:relative}
+.calc-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);width:28px;height:28px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;transition:var(--transition)}
+.calc-toggle:hover,.calc-toggle.active{background:var(--gold);color:#fff}
+.calc-panel{display:none;background:var(--bg2);border:1px solid var(--bg4);border-radius:var(--radius-sm);padding:10px;margin-top:6px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+.calc-panel.show{display:block}
+.calc-expr{width:100%;padding:8px 10px;border:1px solid var(--bg4);border-radius:6px;font-family:var(--font-num);font-size:.95rem;color:var(--text);background:var(--bg3);margin-bottom:8px;outline:none}
+.calc-expr:focus{border-color:var(--gold)}
+.calc-result{font-family:var(--font-num);font-size:.85rem;color:var(--text2);margin-bottom:8px;min-height:20px}
+.calc-result b{color:var(--green);font-size:1rem}
+.calc-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.calc-key{padding:8px;border:1px solid var(--bg4);border-radius:6px;background:var(--bg2);color:var(--text);font-family:var(--font-num);font-size:.9rem;cursor:pointer;text-align:center;transition:var(--transition)}
+.calc-key:hover{background:var(--gold-dim);border-color:var(--gold)}
+.calc-key.op{color:var(--gold);font-weight:600}
+.calc-key.eq{background:var(--gold);color:#fff;font-weight:600}
+.calc-key.eq:hover{background:var(--gold2)}
 select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238A847A' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 textarea.form-input{resize:vertical;min-height:60px}
 .form-row{display:flex;gap:10px}
@@ -290,7 +305,20 @@ textarea.form-input{resize:vertical;min-height:60px}
       </div>
       <div class="form-group">
         <label class="form-label">Số tiền</label>
-        <input class="form-input money" id="txAmount" placeholder="0" inputmode="numeric">
+        <div class="calc-wrap">
+          <input class="form-input money" id="txAmount" placeholder="0" inputmode="numeric" style="padding-right:42px">
+          <button class="calc-toggle" id="calcToggle" title="Máy tính">+/-</button>
+        </div>
+        <div class="calc-panel" id="calcPanel">
+          <input class="calc-expr" id="calcExpr" placeholder="VD: 500000 + 200000 - 50000">
+          <div class="calc-result" id="calcResult"></div>
+          <div class="calc-keys">
+            <button class="calc-key" data-v="7">7</button><button class="calc-key" data-v="8">8</button><button class="calc-key" data-v="9">9</button><button class="calc-key op" data-v="+">+</button>
+            <button class="calc-key" data-v="4">4</button><button class="calc-key" data-v="5">5</button><button class="calc-key" data-v="6">6</button><button class="calc-key op" data-v="-">-</button>
+            <button class="calc-key" data-v="1">1</button><button class="calc-key" data-v="2">2</button><button class="calc-key" data-v="3">3</button><button class="calc-key op" data-v="*">x</button>
+            <button class="calc-key" data-v="C">C</button><button class="calc-key" data-v="0">0</button><button class="calc-key" data-v="000">000</button><button class="calc-key eq" data-v="=">=</button>
+          </div>
+        </div>
         <div class="pills" style="margin-top:8px" id="amountPills"></div>
       </div>
       <div class="form-group">
@@ -361,7 +389,7 @@ textarea.form-input{resize:vertical;min-height:60px}
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Số lượng</label>
-            <input class="form-input" id="invQty" placeholder="VD: 1, 2.5" inputmode="decimal">
+            <input class="form-input" id="invQty" placeholder="VD: 1, 2.5, 0.3" inputmode="decimal">
           </div>
           <div class="form-group">
             <label class="form-label">Đơn vị</label>
@@ -743,13 +771,72 @@ function initUI() {
   document.getElementById('savStart').value = todayStr();
   document.getElementById('invDate').value = todayStr();
 
-  // Money auto-format
+  // Money auto-format (dấu chấm + dấu phẩy song song: 1,000.000 hoặc 1.000,000)
   document.querySelectorAll('.form-input.money').forEach(input => {
     input.addEventListener('input', (e) => {
-      const raw = e.target.value.replace(/\D/g, '');
-      e.target.value = raw ? formatMoney(parseInt(raw)) : '';
+      const raw = e.target.value.replace(/[^\d]/g, '');
+      if (!raw) { e.target.value = ''; return; }
+      const num = parseInt(raw);
+      // Hiển thị cả dấu chấm VÀ dấu phẩy: 1.000.000 (chấm phân cách hàng nghìn)
+      e.target.value = formatMoney(num);
+    });
+    // Cho phép nhập dấu phẩy như dấu chấm
+    input.addEventListener('keypress', (e) => {
+      if (e.key === ',') {
+        e.preventDefault();
+        // Treat comma same as typing continues
+      }
     });
   });
+
+  // Mini calculator
+  const calcToggle = document.getElementById('calcToggle');
+  const calcPanel = document.getElementById('calcPanel');
+  const calcExpr = document.getElementById('calcExpr');
+  const calcResult = document.getElementById('calcResult');
+
+  calcToggle.addEventListener('click', () => {
+    calcPanel.classList.toggle('show');
+    calcToggle.classList.toggle('active');
+    if (calcPanel.classList.contains('show')) calcExpr.focus();
+  });
+
+  // Calculator keys
+  calcPanel.querySelectorAll('.calc-key').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = btn.dataset.v;
+      if (v === 'C') { calcExpr.value = ''; calcResult.innerHTML = ''; return; }
+      if (v === '=') { calcCompute(); return; }
+      calcExpr.value += v;
+      calcLivePreview();
+    });
+  });
+
+  calcExpr.addEventListener('input', calcLivePreview);
+  calcExpr.addEventListener('keydown', (e) => { if(e.key === 'Enter') calcCompute(); });
+
+  function calcLivePreview() {
+    try {
+      const expr = calcExpr.value.replace(/[^\d+\-*/.() ]/g, '');
+      if (!expr) { calcResult.innerHTML = ''; return; }
+      const r = Function('"use strict"; return (' + expr + ')')();
+      if (isFinite(r)) calcResult.innerHTML = '= <b>' + formatMoney(Math.round(r)) + '</b>';
+    } catch(e) { /* typing in progress */ }
+  }
+
+  function calcCompute() {
+    try {
+      const expr = calcExpr.value.replace(/[^\d+\-*/.() ]/g, '');
+      const r = Function('"use strict"; return (' + expr + ')')();
+      if (isFinite(r)) {
+        const val = Math.round(Math.abs(r));
+        document.getElementById('txAmount').value = formatMoney(val);
+        calcResult.innerHTML = '= <b>' + formatMoney(val) + '</b> (đã điền)';
+        calcPanel.classList.remove('show');
+        calcToggle.classList.remove('active');
+      }
+    } catch(e) { calcResult.innerHTML = '<span style="color:var(--red)">Biểu thức không hợp lệ</span>'; }
+  }
 
   // Investment live calc preview
   ['invQty','invBuyPrice','invCurrentPrice'].forEach(id => {
@@ -916,7 +1003,7 @@ function formatMoney(n) {
 
 function parseMoney(s) {
   if (!s) return 0;
-  return parseInt(String(s).replace(/\./g, '').replace(/\D/g, '')) || 0;
+  return parseInt(String(s).replace(/[.,]/g, '').replace(/\D/g, '')) || 0;
 }
 
 function smartFormat(n) {
