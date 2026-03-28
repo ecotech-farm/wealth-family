@@ -139,6 +139,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-we
 .calc-key.op{color:var(--gold);font-weight:600}
 .calc-key.eq{background:var(--gold);color:#fff;font-weight:600}
 .calc-key.eq:hover{background:var(--gold2)}
+.re-progress{margin:10px 0}
+.re-progress-bar{height:10px;background:var(--bg4);border-radius:5px;overflow:hidden}
+.re-progress-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--gold));border-radius:5px;transition:width .4s ease}
+.re-progress-text{display:flex;justify-content:space-between;font-size:.72rem;color:var(--text3);margin-top:4px}
+.re-payment{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bg3);font-size:.82rem}
+.re-payment:last-child{border-bottom:none}
+.re-payment-date{color:var(--text3);font-size:.72rem}
+.re-payment-amount{font-family:var(--font-num);font-weight:500;color:var(--green)}
+.re-add-payment{display:flex;gap:6px;margin-top:10px}
+.re-add-payment input{flex:1}
+.re-add-payment button{white-space:nowrap;padding:8px 14px;background:var(--gold);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:.8rem}
 select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238A847A' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 textarea.form-input{resize:vertical;min-height:60px}
 .form-row{display:flex;gap:10px}
@@ -338,6 +349,7 @@ textarea.form-input{resize:vertical;min-height:60px}
     <div class="tab-bar">
       <button class="tab-btn active" data-tab="savings">Tiết kiệm</button>
       <button class="tab-btn" data-tab="portfolio">Đầu tư</button>
+      <button class="tab-btn" data-tab="realestate">BĐS</button>
     </div>
 
     <!-- Savings Tab -->
@@ -419,6 +431,35 @@ textarea.form-input{resize:vertical;min-height:60px}
         <div class="card-title">Chi tiết các lần mua</div>
         <div id="investList"></div>
       </div>
+    </div>
+
+    <!-- Real Estate Tab -->
+    <div class="tab-content" id="tab-realestate">
+      <div class="card">
+        <div class="card-title">Thêm BĐS theo tiến độ</div>
+        <div class="form-group">
+          <label class="form-label">Tên BĐS</label>
+          <input class="form-input" id="reName" placeholder="VD: Căn hộ Vinhomes, Đất nền Long An...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tổng giá trị hợp đồng</label>
+          <input class="form-input money" id="reTotalValue" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Giá trị hiện tại (ước tính)</label>
+          <input class="form-input money" id="reCurrentValue" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ngày mua</label>
+          <input class="form-input" type="date" id="reDate" min="2020-01-01" max="2030-12-31">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ghi chú</label>
+          <input class="form-input" id="reNote" placeholder="VD: Block A, tầng 12...">
+        </div>
+        <button type="button" class="btn btn-gold btn-block" onclick="addRealEstate()">Thêm BĐS</button>
+      </div>
+      <div id="realEstateList"></div>
     </div>
   </div>
 
@@ -546,6 +587,7 @@ let DATA = {
   transactions: [],
   savings: [],
   investments: [],
+  realEstates: [],
   aiApiKey: '',
   chatHistory: []
 };
@@ -614,6 +656,7 @@ async function connectFamily(code) {
       DATA.transactions = remote.transactions || DATA.transactions;
       DATA.savings = remote.savings || DATA.savings;
       DATA.investments = remote.investments || DATA.investments;
+      DATA.realEstates = remote.realEstates || DATA.realEstates;
       if (remote.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
       if (remote.chatHistory) DATA.chatHistory = remote.chatHistory;
       if (remote.settings) {
@@ -641,6 +684,7 @@ async function connectFamily(code) {
           DATA.transactions = remote.transactions || [];
           DATA.savings = remote.savings || [];
           DATA.investments = remote.investments || [];
+          DATA.realEstates = remote.realEstates || [];
           if (remote.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
           if (remote.chatHistory) {
             DATA.chatHistory = remote.chatHistory;
@@ -680,6 +724,7 @@ async function syncToSupabase() {
       transactions: DATA.transactions,
       savings: DATA.savings,
       investments: DATA.investments,
+      realEstates: DATA.realEstates,
       aiApiKey: DATA.aiApiKey,
       chatHistory: DATA.chatHistory
     };
@@ -770,6 +815,7 @@ function initUI() {
   document.getElementById('txDate').value = todayStr();
   document.getElementById('savStart').value = todayStr();
   document.getElementById('invDate').value = todayStr();
+  document.getElementById('reDate').value = todayStr();
 
   // Money auto-format (dấu chấm + dấu phẩy song song: 1,000.000 hoặc 1.000,000)
   document.querySelectorAll('.form-input.money').forEach(input => {
@@ -984,6 +1030,7 @@ function renderAll() {
   renderMonthTx();
   renderSavings();
   renderInvestments();
+  renderRealEstates();
 }
 
 function updateFamilyDisplay() {
@@ -1062,17 +1109,19 @@ function getTotalSavingsInvestments() {
   let total = 0;
   DATA.savings.forEach(s => total += s.amount);
   DATA.investments.forEach(i => total += i.currentValue);
+  (DATA.realEstates || []).forEach(r => total += r.currentValue || 0);
   return total;
 }
 
 function getNetWorth() {
-  // Sum of savings principal + investment current values
+  // Sum of savings principal + investment current values + real estate
   let total = 0;
   DATA.savings.forEach(s => {
     total += s.amount;
     total += calcAccruedInterest(s);
   });
   DATA.investments.forEach(i => total += i.currentValue);
+  (DATA.realEstates || []).forEach(r => total += r.currentValue || 0);
   return total;
 }
 
@@ -1340,7 +1389,7 @@ function addSavings() {
 
 // ===== INVESTMENTS =====
 function updateInvPreview() {
-  const qty = parseFloat(document.getElementById('invQty').value) || 0;
+  const qty = parseFloat(document.getElementById('invQty').value.replace(',', '.')) || 0;
   const buyPrice = parseMoney(document.getElementById('invBuyPrice').value);
   const curPrice = parseMoney(document.getElementById('invCurrentPrice').value);
   const capital = Math.round(qty * buyPrice);
@@ -1449,7 +1498,7 @@ function renderInvestments() {
 
 function addInvestment() {
   const name = document.getElementById('invName').value.trim();
-  const qty = parseFloat(document.getElementById('invQty').value) || 0;
+  const qty = parseFloat(document.getElementById('invQty').value.replace(',', '.')) || 0;
   const unit = document.getElementById('invUnit').value.trim();
   const buyPrice = parseMoney(document.getElementById('invBuyPrice').value);
   const currentPrice = parseMoney(document.getElementById('invCurrentPrice').value);
@@ -1477,6 +1526,123 @@ function addInvestment() {
   document.getElementById('invBuyPrice').value = '';
   document.getElementById('invCurrentPrice').value = '';
   updateInvPreview();
+}
+
+// ===== REAL ESTATE =====
+function addRealEstate() {
+  const name = document.getElementById('reName').value.trim();
+  const totalValue = parseMoney(document.getElementById('reTotalValue').value);
+  const currentValue = parseMoney(document.getElementById('reCurrentValue').value);
+  const date = document.getElementById('reDate').value;
+  const note = document.getElementById('reNote').value.trim();
+
+  if (!name) { showToast('Vui lòng nhập tên BĐS', 'error'); return; }
+  if (!totalValue) { showToast('Vui lòng nhập tổng giá trị hợp đồng', 'error'); return; }
+
+  DATA.realEstates = DATA.realEstates || [];
+  DATA.realEstates.push({
+    id: uid(), name, totalValue, currentValue: currentValue || totalValue,
+    date, note, payments: []
+  });
+  saveLocal();
+  renderAll();
+  showToast('Đã thêm BĐS', 'success');
+
+  document.getElementById('reName').value = '';
+  document.getElementById('reTotalValue').value = '';
+  document.getElementById('reCurrentValue').value = '';
+  document.getElementById('reNote').value = '';
+}
+
+function addREPayment(reId) {
+  const amtInput = document.getElementById('rePmtAmt-' + reId);
+  const dateInput = document.getElementById('rePmtDate-' + reId);
+  const noteInput = document.getElementById('rePmtNote-' + reId);
+  const amount = parseMoney(amtInput.value);
+  const date = dateInput.value || todayStr();
+  const note = noteInput.value.trim();
+
+  if (!amount) { showToast('Vui lòng nhập số tiền đợt thanh toán', 'error'); return; }
+
+  const re = (DATA.realEstates || []).find(r => r.id === reId);
+  if (!re) return;
+  re.payments.push({ id: uid(), amount, date, note });
+  saveLocal();
+  renderRealEstates();
+  showToast('Đã thêm đợt thanh toán', 'success');
+}
+
+function deleteRealEstate(id) {
+  DATA.realEstates = (DATA.realEstates || []).filter(r => r.id !== id);
+  saveLocal();
+  renderAll();
+}
+
+function deleteREPayment(reId, pmtId) {
+  const re = (DATA.realEstates || []).find(r => r.id === reId);
+  if (!re) return;
+  re.payments = re.payments.filter(p => p.id !== pmtId);
+  saveLocal();
+  renderRealEstates();
+}
+
+function renderRealEstates() {
+  const container = document.getElementById('realEstateList');
+  if (!container) return;
+  const items = DATA.realEstates || [];
+  if (!items.length) { container.innerHTML = '<div class="empty-state">Chưa có BĐS nào</div>'; return; }
+
+  container.innerHTML = items.map(re => {
+    const paid = re.payments.reduce((s, p) => s + p.amount, 0);
+    const pct = re.totalValue > 0 ? Math.min(100, Math.round(paid / re.totalValue * 100)) : 0;
+    const remaining = re.totalValue - paid;
+
+    const paymentsHtml = re.payments.map(p => `
+      <div class="re-payment">
+        <div>
+          <span>${p.note || 'Đợt thanh toán'}</span>
+          <div class="re-payment-date">${p.date}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="re-payment-amount">${formatMoney(p.amount)}</span>
+          <button type="button" onclick="deleteREPayment('${re.id}','${p.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.7rem">✕</button>
+        </div>
+      </div>
+    `).join('');
+
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div class="card-title" style="margin-bottom:4px">${re.name}</div>
+        <button type="button" onclick="deleteRealEstate('${re.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.75rem">Xóa</button>
+      </div>
+      ${re.note ? `<div style="font-size:.75rem;color:var(--text3);margin-bottom:8px">${re.note}</div>` : ''}
+      <div style="font-size:.82rem;color:var(--text2);margin-bottom:4px">
+        Tổng HĐ: <b>${formatMoney(re.totalValue)}</b> | Giá trị hiện tại: <b style="color:var(--green)">${formatMoney(re.currentValue)}</b>
+      </div>
+      <div class="re-progress">
+        <div class="re-progress-bar"><div class="re-progress-fill" style="width:${pct}%"></div></div>
+        <div class="re-progress-text">
+          <span>Đã thanh toán: ${formatMoney(paid)} (${pct}%)</span>
+          <span>Còn lại: ${formatMoney(Math.max(0, remaining))}</span>
+        </div>
+      </div>
+      ${paymentsHtml}
+      <div class="re-add-payment">
+        <input class="form-input money" id="rePmtAmt-${re.id}" placeholder="Số tiền" inputmode="numeric" style="font-size:.82rem;padding:8px">
+        <input class="form-input" type="date" id="rePmtDate-${re.id}" value="${todayStr()}" min="2020-01-01" max="2030-12-31" style="font-size:.82rem;padding:8px;width:130px">
+        <input class="form-input" id="rePmtNote-${re.id}" placeholder="Ghi chú" style="font-size:.82rem;padding:8px">
+        <button type="button" onclick="addREPayment('${re.id}')">+ Đợt</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Re-bind money format for new inputs
+  container.querySelectorAll('.form-input.money').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^\d]/g, '');
+      e.target.value = raw ? formatMoney(parseInt(raw)) : '';
+    });
+  });
 }
 
 // ===== AI CHAT =====
@@ -1551,6 +1717,7 @@ Thông tin tài chính hiện tại:
 - Phân bổ ngân sách:\n${budgetInfo}
 - Tiết kiệm: ${DATA.savings.length} sổ, tổng ${formatMoney(DATA.savings.reduce((s,i)=>s+i.amount,0))}
 - Đầu tư: ${DATA.investments.length} khoản, tổng ${formatMoney(DATA.investments.reduce((s,i)=>s+i.currentValue,0))}
+- BĐS: ${(DATA.realEstates||[]).length} căn, tổng ${formatMoney((DATA.realEstates||[]).reduce((s,r)=>s+r.currentValue,0))}
 
 Trả lời ngắn gọn, thực tế, có thể hành động.`;
 
