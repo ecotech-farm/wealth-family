@@ -160,6 +160,28 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-we
 .brk-item:last-child{border-bottom:none}
 .brk-cash{font-family:var(--font-num);font-weight:500;color:var(--blue);font-size:1rem}
 
+/* Category stats */
+.cat-stat-item{padding:10px 0;border-bottom:1px solid var(--bg3)}
+.cat-stat-item:last-child{border-bottom:none}
+.cat-stat-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.cat-stat-name{font-size:.88rem;font-weight:500;color:var(--text)}
+.cat-stat-amount{font-family:var(--font-num);font-size:1rem;font-weight:600;color:var(--red)}
+.cat-stat-bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-bottom:4px}
+.cat-stat-fill{height:100%;border-radius:3px;transition:width .4s ease}
+.cat-stat-detail{font-size:.75rem;color:var(--text3)}
+.cat-stat-sub{margin-top:6px;padding-left:12px}
+.cat-stat-sub-item{display:flex;justify-content:space-between;font-size:.8rem;color:var(--text2);padding:2px 0}
+.cat-stat-sub-item span:last-child{font-family:var(--font-num);font-weight:500}
+.stats-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.stats-summary-item{text-align:center;padding:12px;background:var(--bg3);border-radius:var(--radius-sm)}
+.stats-summary-label{font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.stats-summary-value{font-family:var(--font-num);font-size:1.2rem;font-weight:600}
+/* Asset detail */
+.asset-detail-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bg3);font-size:.88rem}
+.asset-detail-item:last-child{border-bottom:none}
+.asset-detail-name{color:var(--text2)}
+.asset-detail-value{font-family:var(--font-num);font-weight:500;color:var(--text)}
+
 .re-progress{margin:10px 0}
 .re-progress-bar{height:10px;background:var(--bg4);border-radius:5px;overflow:hidden}
 .re-progress-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--gold));border-radius:5px;transition:width .4s ease}
@@ -289,6 +311,7 @@ textarea.form-input{resize:vertical;min-height:60px}
   <!-- Navigation -->
   <div class="nav">
     <button class="nav-pill active" data-panel="overview">Tổng quan</button>
+    <button class="nav-pill" data-panel="assets">Tài sản</button>
     <button class="nav-pill" data-panel="spending">Chi tiêu</button>
     <button class="nav-pill" data-panel="invest">ĐT & Tiết kiệm</button>
     <button class="nav-pill" data-panel="ai">AI Tư vấn</button>
@@ -296,14 +319,6 @@ textarea.form-input{resize:vertical;min-height:60px}
 
   <!-- ===== OVERVIEW PANEL ===== -->
   <div class="panel active" id="panel-overview">
-    <div class="card" id="assetSummaryCard">
-      <div class="card-title">Tổng quan tài sản</div>
-      <div class="asset-total">
-        <div class="asset-total-label">Tổng tài sản ròng</div>
-        <div class="asset-total-value" id="assetTotalValue">0</div>
-      </div>
-      <div id="assetAllocationBars"></div>
-    </div>
     <div class="kpi-strip" id="kpiStrip"></div>
     <div id="alertBanners"></div>
     <div class="card">
@@ -316,8 +331,33 @@ textarea.form-input{resize:vertical;min-height:60px}
     </div>
   </div>
 
+  <!-- ===== ASSETS PANEL ===== -->
+  <div class="panel" id="panel-assets">
+    <div class="card" id="assetSummaryCard">
+      <div class="card-title">Tổng quan tài sản</div>
+      <div class="asset-total">
+        <div class="asset-total-label">Tổng tài sản ròng</div>
+        <div class="asset-total-value" id="assetTotalValue">0</div>
+      </div>
+      <div id="assetAllocationBars"></div>
+    </div>
+    <div class="card" id="assetDetailCard">
+      <div class="card-title">Chi tiết tài sản</div>
+      <div id="assetDetailList"></div>
+    </div>
+  </div>
+
   <!-- ===== SPENDING PANEL ===== -->
   <div class="panel" id="panel-spending">
+    <div class="card">
+      <div class="card-title">Thống kê chi tiêu</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <button type="button" class="pill" onclick="changeStatsMonth(-1)">&larr;</button>
+        <div style="flex:1;text-align:center;font-family:var(--font-num);font-size:1.1rem;font-weight:500" id="statsMonthLabel"></div>
+        <button type="button" class="pill" onclick="changeStatsMonth(1)">&rarr;</button>
+      </div>
+      <div id="catStatsContainer"></div>
+    </div>
     <div class="card">
       <div class="card-title">Phân bổ ngân sách</div>
       <div id="budgetBars"></div>
@@ -368,7 +408,7 @@ textarea.form-input{resize:vertical;min-height:60px}
       <button class="btn btn-gold btn-block" onclick="addTransaction()">Lưu giao dịch</button>
     </div>
     <div class="card">
-      <div class="card-title">Giao dịch tháng này</div>
+      <div class="card-title">Giao dịch <span id="monthTxTitle">tháng này</span></div>
       <div id="monthTxList"></div>
     </div>
   </div>
@@ -642,6 +682,7 @@ let selectedSubCat = null;
 let txType = 'expense';
 let selectedInvType = 'stock';
 let editingInvId = null;
+let statsMonthOffset = 0; // 0 = current month, -1 = last month, etc.
 let supaClient = null;
 let realtimeChannel = null;
 let chatHistory = [];
@@ -1091,6 +1132,7 @@ function renderAll() {
   renderAlerts();
   renderCashflow();
   renderRecentTx();
+  renderCatStats();
   renderBudgetBars();
   renderMonthTx();
   renderSavings();
@@ -1280,6 +1322,39 @@ function renderAssetSummary() {
       </div>
     </div>`;
   }).join('');
+
+  // Asset detail breakdown
+  const detailEl = document.getElementById('assetDetailList');
+  if (!detailEl) return;
+  let details = [];
+  // Savings
+  DATA.savings.forEach(s => {
+    const val = s.amount + calcAccruedInterest(s);
+    details.push({ name: `TK: ${s.bank}`, value: val, color: 'var(--green)' });
+  });
+  // Investments
+  DATA.investments.forEach(i => {
+    details.push({ name: `${i.name} (${(getInvTypeById(i.type)||{}).name||''})`, value: i.currentValue, color: (getInvTypeById(i.type)||{}).color||'var(--text3)' });
+  });
+  // BĐS
+  (DATA.realEstates||[]).forEach(r => {
+    const paid = (r.payments||[]).reduce((s,p)=>s+p.amount,0);
+    details.push({ name: `BĐS: ${r.name}`, value: paid, color: 'var(--green)' });
+  });
+  // Brokerage
+  (DATA.brokerageAccounts||[]).forEach(b => {
+    details.push({ name: `CK: ${b.name}`, value: b.cashBalance||0, color: 'var(--blue)' });
+  });
+  // Realized PnL total
+  const rPnL = (DATA.realizedPnL||[]).reduce((s,r)=>s+r.pnl,0);
+  if (rPnL !== 0) details.push({ name: 'Lãi/lỗ đã chốt', value: rPnL, color: rPnL>=0?'var(--green)':'var(--red)' });
+
+  if (!details.length) { detailEl.innerHTML = '<div style="color:var(--text3);font-size:.82rem">Chưa có tài sản nào</div>'; return; }
+  detailEl.innerHTML = details.map(d => `
+    <div class="asset-detail-item">
+      <span class="asset-detail-name">${d.name}</span>
+      <span class="asset-detail-value" style="color:${d.color}">${formatMoney(Math.round(d.value))}</span>
+    </div>`).join('');
 }
 
 function renderKPI() {
@@ -1383,6 +1458,89 @@ function formatDate(s) {
 }
 
 // ===== BUDGET BARS =====
+function getStatsMonthKey() {
+  const d = new Date();
+  d.setMonth(d.getMonth() + statsMonthOffset);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+
+function getStatsMonthLabel() {
+  const d = new Date();
+  d.setMonth(d.getMonth() + statsMonthOffset);
+  const months = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+  return months[d.getMonth()] + ' / ' + d.getFullYear();
+}
+
+function changeStatsMonth(dir) {
+  statsMonthOffset += dir;
+  if (statsMonthOffset > 0) statsMonthOffset = 0;
+  renderCatStats();
+  renderMonthTx();
+}
+
+function renderCatStats() {
+  const mk = getStatsMonthKey();
+  const label = document.getElementById('statsMonthLabel');
+  if (label) label.textContent = getStatsMonthLabel();
+  const titleEl = document.getElementById('monthTxTitle');
+  if (titleEl) titleEl.textContent = statsMonthOffset === 0 ? 'tháng này' : getStatsMonthLabel();
+
+  const container = document.getElementById('catStatsContainer');
+  if (!container) return;
+
+  const txs = getMonthTransactions(mk);
+  const totalIncome = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+  const totalExpense = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+
+  // Summary
+  let html = `<div class="stats-summary">
+    <div class="stats-summary-item">
+      <div class="stats-summary-label">Thu nhập</div>
+      <div class="stats-summary-value" style="color:var(--green)">${formatMoney(totalIncome)}</div>
+    </div>
+    <div class="stats-summary-item">
+      <div class="stats-summary-label">Chi tiêu</div>
+      <div class="stats-summary-value" style="color:var(--red)">${formatMoney(totalExpense)}</div>
+    </div>
+  </div>`;
+
+  if (!totalExpense) {
+    html += '<div style="text-align:center;color:var(--text3);font-size:.82rem;padding:8px 0">Chưa có chi tiêu</div>';
+    container.innerHTML = html;
+    return;
+  }
+
+  // Category breakdown
+  CATEGORIES.forEach(cat => {
+    const catTxs = txs.filter(t => t.type === 'expense' && t.category === cat.id);
+    const catTotal = catTxs.reduce((s,t) => s + t.amount, 0);
+    if (catTotal === 0) return;
+    const pct = totalExpense > 0 ? (catTotal / totalExpense * 100) : 0;
+
+    // Sub-category grouping
+    const subs = {};
+    catTxs.forEach(t => {
+      const key = t.desc || 'Khác';
+      subs[key] = (subs[key] || 0) + t.amount;
+    });
+    const subHtml = Object.entries(subs).sort((a,b) => b[1]-a[1]).map(([name, amt]) =>
+      `<div class="cat-stat-sub-item"><span>${name}</span><span>${formatMoney(amt)}</span></div>`
+    ).join('');
+
+    html += `<div class="cat-stat-item">
+      <div class="cat-stat-header">
+        <span class="cat-stat-name" style="color:${cat.color}">${cat.name}</span>
+        <span class="cat-stat-amount">${formatMoney(catTotal)}</span>
+      </div>
+      <div class="cat-stat-bar"><div class="cat-stat-fill" style="width:${pct}%;background:${cat.color}"></div></div>
+      <div class="cat-stat-detail">${pct.toFixed(1)}% tổng chi tiêu | ${catTxs.length} giao dịch</div>
+      ${subHtml ? `<div class="cat-stat-sub">${subHtml}</div>` : ''}
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
 function renderBudgetBars() {
   const mk = currentMonthKey();
   const income = getMonthlyIncome();
@@ -1413,10 +1571,10 @@ function renderBudgetBars() {
 
 // ===== MONTH TRANSACTIONS =====
 function renderMonthTx() {
-  const mk = currentMonthKey();
+  const mk = getStatsMonthKey();
   const txs = getMonthTransactions(mk).sort((a,b) => new Date(b.date) - new Date(a.date));
   document.getElementById('monthTxList').innerHTML = txs.length ? txs.map(txItemHTML).join('') :
-    '<p style="font-size:.8rem;color:var(--text3);padding:16px 0;text-align:center">Chưa có giao dịch tháng này</p>';
+    '<p style="font-size:.8rem;color:var(--text3);padding:16px 0;text-align:center">Chưa có giao dịch</p>';
 }
 
 // ===== ADD TRANSACTION =====
