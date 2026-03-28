@@ -307,16 +307,16 @@ textarea.form-input{resize:vertical;min-height:60px}
         <label class="form-label">Số tiền</label>
         <div class="calc-wrap">
           <input class="form-input money" id="txAmount" placeholder="0" inputmode="numeric" style="padding-right:42px">
-          <button class="calc-toggle" id="calcToggle" title="Máy tính">+/-</button>
+          <button type="button" class="calc-toggle" id="calcToggle" title="Máy tính">+/-</button>
         </div>
         <div class="calc-panel" id="calcPanel">
           <input class="calc-expr" id="calcExpr" placeholder="VD: 500000 + 200000 - 50000">
           <div class="calc-result" id="calcResult"></div>
           <div class="calc-keys">
-            <button class="calc-key" data-v="7">7</button><button class="calc-key" data-v="8">8</button><button class="calc-key" data-v="9">9</button><button class="calc-key op" data-v="+">+</button>
-            <button class="calc-key" data-v="4">4</button><button class="calc-key" data-v="5">5</button><button class="calc-key" data-v="6">6</button><button class="calc-key op" data-v="-">-</button>
-            <button class="calc-key" data-v="1">1</button><button class="calc-key" data-v="2">2</button><button class="calc-key" data-v="3">3</button><button class="calc-key op" data-v="*">x</button>
-            <button class="calc-key" data-v="C">C</button><button class="calc-key" data-v="0">0</button><button class="calc-key" data-v="000">000</button><button class="calc-key eq" data-v="=">=</button>
+            <button type="button" class="calc-key" data-v="7">7</button><button type="button" class="calc-key" data-v="8">8</button><button type="button" class="calc-key" data-v="9">9</button><button type="button" class="calc-key op" data-v="+">+</button>
+            <button type="button" class="calc-key" data-v="4">4</button><button type="button" class="calc-key" data-v="5">5</button><button type="button" class="calc-key" data-v="6">6</button><button type="button" class="calc-key op" data-v="-">-</button>
+            <button type="button" class="calc-key" data-v="1">1</button><button type="button" class="calc-key" data-v="2">2</button><button type="button" class="calc-key" data-v="3">3</button><button type="button" class="calc-key op" data-v="*">x</button>
+            <button type="button" class="calc-key" data-v="C">C</button><button type="button" class="calc-key" data-v="0">0</button><button type="button" class="calc-key" data-v="000">000</button><button type="button" class="calc-key eq" data-v="=">=</button>
           </div>
         </div>
         <div class="pills" style="margin-top:8px" id="amountPills"></div>
