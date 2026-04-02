@@ -351,11 +351,12 @@ textarea.form-input{resize:vertical;min-height:60px}
   <div class="panel" id="panel-spending">
     <div class="card">
       <div class="card-title">Thống kê chi tiêu</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
         <button type="button" class="pill" onclick="changeStatsMonth(-1)">&larr;</button>
         <div style="flex:1;text-align:center;font-family:var(--font-num);font-size:1.1rem;font-weight:500" id="statsMonthLabel"></div>
         <button type="button" class="pill" onclick="changeStatsMonth(1)">&rarr;</button>
       </div>
+      <div class="pills" id="statsPersonFilter" style="margin-bottom:10px"></div>
       <div id="catStatsContainer"></div>
     </div>
     <div class="card">
@@ -401,11 +402,17 @@ textarea.form-input{resize:vertical;min-height:60px}
         </div>
         <div class="pills" style="margin-top:8px" id="amountPills"></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Ngày</label>
-        <input class="form-input" type="date" id="txDate" min="2020-01-01" max="2030-12-31">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Người chi</label>
+          <div class="pills" id="personPills"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ngày</label>
+          <input class="form-input" type="date" id="txDate" min="2020-01-01" max="2030-12-31">
+        </div>
       </div>
-      <button class="btn btn-gold btn-block" onclick="addTransaction()">Lưu giao dịch</button>
+      <button class="btn btn-gold btn-block" id="txSubmitBtn" onclick="addTransaction()">Lưu giao dịch</button>
     </div>
     <div class="card">
       <div class="card-title">Giao dịch <span id="monthTxTitle">tháng này</span></div>
@@ -586,6 +593,10 @@ textarea.form-input{resize:vertical;min-height:60px}
         <label class="form-label">Thu nhập hàng tháng</label>
         <input class="form-input money" id="setIncome" placeholder="0" inputmode="numeric">
       </div>
+      <div class="form-group">
+        <label class="form-label">Thành viên (phân cách bằng dấu phẩy)</label>
+        <input class="form-input" id="setPersons" placeholder="VD: Chồng, Vợ">
+      </div>
     </div>
     <div class="modal-section">
       <div class="modal-section-title">Đồng bộ Supabase</div>
@@ -678,11 +689,14 @@ let DATA = {
 };
 
 let selectedCat = null;
+let selectedPerson = '';
 let selectedSubCat = null;
 let txType = 'expense';
 let selectedInvType = 'stock';
 let editingInvId = null;
+let editingTxId = null;
 let statsMonthOffset = 0; // 0 = current month, -1 = last month, etc.
+let statsPersonFilter = ''; // '' = all, 'Vợ' / 'Chồng' = filter
 let supaClient = null;
 let realtimeChannel = null;
 let chatHistory = [];
@@ -978,7 +992,8 @@ function initUI() {
       if (isFinite(r)) {
         const val = Math.round(Math.abs(r));
         document.getElementById('txAmount').value = formatMoney(val);
-        calcResult.innerHTML = '= <b>' + formatMoney(val) + '</b> (đã điền)';
+        calcResult.innerHTML = '';
+        calcExpr.value = '';
         calcPanel.classList.remove('show');
         calcToggle.classList.remove('active');
       }
@@ -1037,6 +1052,8 @@ function initUI() {
       DATA.investments = DATA.investments.filter(i => i.id !== id);
       saveLocal(); renderAll();
       showToast('Đã xóa khoản đầu tư', 'success');
+    } else if (action === 'edit-tx') {
+      editTransaction(id);
     } else if (action === 'edit-inv') {
       editInvestment(id);
     } else if (action === 'close-position') {
@@ -1132,6 +1149,7 @@ function renderAll() {
   renderAlerts();
   renderCashflow();
   renderRecentTx();
+  renderPersonPills();
   renderCatStats();
   renderBudgetBars();
   renderMonthTx();
@@ -1441,13 +1459,15 @@ function txItemHTML(t) {
   const cat = getCatById(t.category);
   const dotColor = cat ? cat.color : 'var(--text3)';
   const sign = t.type === 'income' ? '+' : '-';
+  const personTag = t.person ? `<span style="font-size:.65rem;color:var(--gold);margin-left:4px">${t.person}</span>` : '';
   return `<div class="tx-item">
     <div class="tx-cat-dot" style="background:${dotColor}"></div>
     <div class="tx-info">
-      <div class="tx-desc">${t.desc || (cat ? cat.name : 'Khác')}</div>
+      <div class="tx-desc">${t.desc || (cat ? cat.name : 'Khác')}${personTag}</div>
       <div class="tx-date">${formatDate(t.date)}</div>
     </div>
     <div class="tx-amount ${t.type}">${sign}${smartFormat(t.amount)}</div>
+    <button class="tx-del" data-action="edit-tx" data-id="${t.id}" style="color:var(--gold)" title="Sửa">&#9998;</button>
     <button class="tx-del" data-action="del-tx" data-id="${t.id}">&times;</button>
   </div>`;
 }
@@ -1485,12 +1505,40 @@ function renderCatStats() {
   const titleEl = document.getElementById('monthTxTitle');
   if (titleEl) titleEl.textContent = statsMonthOffset === 0 ? 'tháng này' : getStatsMonthLabel();
 
+  // Person filter pills
+  const pfContainer = document.getElementById('statsPersonFilter');
+  if (pfContainer) {
+    const persons = DATA.settings.persons || [];
+    if (persons.length > 0) {
+      pfContainer.innerHTML = '';
+      // "Tất cả" pill
+      const allPill = document.createElement('button');
+      allPill.type = 'button';
+      allPill.className = 'pill sm' + (!statsPersonFilter ? ' active' : '');
+      allPill.textContent = 'Tất cả';
+      allPill.addEventListener('click', () => { statsPersonFilter = ''; renderCatStats(); renderMonthTx(); });
+      pfContainer.appendChild(allPill);
+      persons.forEach(p => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'pill sm' + (statsPersonFilter === p ? ' active' : '');
+        pill.textContent = p;
+        pill.addEventListener('click', () => { statsPersonFilter = statsPersonFilter === p ? '' : p; renderCatStats(); renderMonthTx(); });
+        pfContainer.appendChild(pill);
+      });
+    } else {
+      pfContainer.innerHTML = '';
+    }
+  }
+
   const container = document.getElementById('catStatsContainer');
   if (!container) return;
 
-  const txs = getMonthTransactions(mk);
+  let txs = getMonthTransactions(mk);
+  if (statsPersonFilter) txs = txs.filter(t => t.person === statsPersonFilter);
   const totalIncome = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
   const totalExpense = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+  const remaining = totalIncome - totalExpense;
 
   // Summary
   let html = `<div class="stats-summary">
@@ -1503,6 +1551,9 @@ function renderCatStats() {
       <div class="stats-summary-value" style="color:var(--red)">${formatMoney(totalExpense)}</div>
     </div>
   </div>`;
+  if (statsPersonFilter) {
+    html += `<div style="text-align:center;font-size:.85rem;margin-bottom:10px;color:${remaining>=0?'var(--green)':'var(--red)'}">Số dư ${statsPersonFilter}: <b>${remaining>=0?'+':''}${formatMoney(remaining)}</b></div>`;
+  }
 
   if (!totalExpense) {
     html += '<div style="text-align:center;color:var(--text3);font-size:.82rem;padding:8px 0">Chưa có chi tiêu</div>';
@@ -1572,9 +1623,55 @@ function renderBudgetBars() {
 // ===== MONTH TRANSACTIONS =====
 function renderMonthTx() {
   const mk = getStatsMonthKey();
-  const txs = getMonthTransactions(mk).sort((a,b) => new Date(b.date) - new Date(a.date));
+  let txs = getMonthTransactions(mk).sort((a,b) => new Date(b.date) - new Date(a.date));
+  if (statsPersonFilter) txs = txs.filter(t => t.person === statsPersonFilter);
   document.getElementById('monthTxList').innerHTML = txs.length ? txs.map(txItemHTML).join('') :
     '<p style="font-size:.8rem;color:var(--text3);padding:16px 0;text-align:center">Chưa có giao dịch</p>';
+}
+
+// ===== PERSON PILLS =====
+function renderPersonPills() {
+  const container = document.getElementById('personPills');
+  if (!container) return;
+  const persons = DATA.settings.persons || [];
+  if (!persons.length) {
+    container.innerHTML = '<span style="font-size:.75rem;color:var(--text3)">Thêm thành viên trong Cài đặt</span>';
+    return;
+  }
+  container.innerHTML = '';
+  persons.forEach(p => {
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = 'pill' + (selectedPerson === p ? ' active' : '');
+    pill.textContent = p;
+    pill.addEventListener('click', () => {
+      selectedPerson = selectedPerson === p ? '' : p;
+      renderPersonPills();
+    });
+    container.appendChild(pill);
+  });
+}
+
+// ===== EDIT TRANSACTION =====
+function editTransaction(id) {
+  const tx = DATA.transactions.find(t => t.id === id);
+  if (!tx) return;
+  // Fill form
+  txType = tx.type;
+  document.querySelectorAll('#txTypeToggle .toggle-opt').forEach(b => {
+    b.className = 'toggle-opt' + (b.dataset.type === txType ? (txType === 'expense' ? ' active-expense' : ' active-income') : '');
+  });
+  selectedCat = tx.category !== 'income' ? tx.category : null;
+  renderCatPills();
+  document.getElementById('txDesc').value = tx.desc || '';
+  document.getElementById('txAmount').value = formatMoney(tx.amount);
+  document.getElementById('txDate').value = tx.date;
+  selectedPerson = tx.person || '';
+  renderPersonPills();
+  editingTxId = id;
+  const btn = document.getElementById('txSubmitBtn');
+  if (btn) { btn.textContent = 'Cập nhật giao dịch'; btn.style.background = 'var(--blue)'; }
+  document.getElementById('txDesc').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ===== ADD TRANSACTION =====
@@ -1587,23 +1684,53 @@ function addTransaction() {
   if (!selectedCat && txType === 'expense') { showToast('Vui lòng chọn nhóm chi tiêu', 'error'); return; }
   if (!date) { showToast('Vui lòng chọn ngày', 'error'); return; }
 
-  DATA.transactions.push({
-    id: uid(),
-    type: txType,
-    category: selectedCat || 'income',
-    desc: desc || (txType === 'income' ? 'Thu nhập' : (getCatById(selectedCat)?.name || '')),
-    amount,
-    date
-  });
+  if (editingTxId) {
+    const tx = DATA.transactions.find(t => t.id === editingTxId);
+    if (tx) {
+      Object.assign(tx, {
+        type: txType,
+        category: selectedCat || 'income',
+        desc: desc || (txType === 'income' ? 'Thu nhập' : (getCatById(selectedCat)?.name || '')),
+        amount, date,
+        person: selectedPerson || ''
+      });
+    }
+    editingTxId = null;
+    showToast('Đã cập nhật giao dịch', 'success');
+    const btn = document.getElementById('txSubmitBtn');
+    if (btn) { btn.textContent = 'Lưu giao dịch'; btn.style.background = ''; }
+  } else {
+    DATA.transactions.push({
+      id: uid(),
+      type: txType,
+      category: selectedCat || 'income',
+      desc: desc || (txType === 'income' ? 'Thu nhập' : (getCatById(selectedCat)?.name || '')),
+      amount, date,
+      person: selectedPerson || ''
+    });
+    showToast('Đã lưu giao dịch', 'success');
+  }
+
+  // Auto-jump stats month to the transaction's month
+  const txMonth = getMonthKey(date);
+  const curMonth = currentMonthKey();
+  if (txMonth !== curMonth) {
+    const [y1,m1] = txMonth.split('-').map(Number);
+    const [y2,m2] = curMonth.split('-').map(Number);
+    statsMonthOffset = (y1 - y2) * 12 + (m1 - m2);
+  } else {
+    statsMonthOffset = 0;
+  }
 
   saveLocal();
   renderAll();
-  showToast('Đã lưu giao dịch', 'success');
 
   // Reset form
   document.getElementById('txAmount').value = '';
   document.getElementById('txDesc').value = '';
   selectedSubCat = null;
+  selectedPerson = '';
+  renderPersonPills();
 }
 
 // ===== SAVINGS =====
@@ -2216,6 +2343,7 @@ function openSettings() {
   document.getElementById('setFamilyName').value = DATA.settings.familyName || '';
   document.getElementById('setIncome').value = DATA.settings.monthlyIncome ? formatMoney(DATA.settings.monthlyIncome) : '';
   document.getElementById('setFamilyCode').value = DATA.settings.familyCode || '';
+  document.getElementById('setPersons').value = (DATA.settings.persons || []).join(', ');
   document.getElementById('settingsModal').classList.add('active');
 }
 
@@ -2226,6 +2354,7 @@ function closeSettings() {
 function saveSettings() {
   DATA.settings.familyName = document.getElementById('setFamilyName').value.trim();
   DATA.settings.monthlyIncome = parseMoney(document.getElementById('setIncome').value);
+  DATA.settings.persons = document.getElementById('setPersons').value.split(',').map(s => s.trim()).filter(Boolean);
   const newCode = document.getElementById('setFamilyCode').value.trim();
   const codeChanged = newCode !== DATA.settings.familyCode;
   DATA.settings.familyCode = newCode;
