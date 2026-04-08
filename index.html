@@ -283,9 +283,19 @@ textarea.form-input{resize:vertical;min-height:60px}
 .custom-sub-input input{width:120px;padding:4px 10px;border:1px solid var(--gold);border-radius:24px;font-size:.72rem;font-family:var(--font-body);outline:none;color:var(--text)}
 .custom-sub-input button{padding:4px 10px;border-radius:24px;border:1px solid var(--gold);background:var(--gold);color:#fff;font-size:.68rem;cursor:pointer}
 
+/* Stock module */
+.stock-kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.stock-portfolio-item{background:var(--bg2);border:1px solid rgba(0,0,0,.06);border-radius:var(--radius);padding:14px;margin-bottom:10px}
+.price-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.6rem;font-weight:500}
+.price-badge.stale{background:var(--yellow-dim);color:var(--yellow)}
+.price-badge.manual{background:var(--red-dim);color:var(--red)}
+.collapse-header{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:4px 0;user-select:none}
+.collapse-icon{color:var(--text3);font-size:.9rem;transition:var(--transition)}
+
 /* Responsive */
 @media(max-width:480px){
   .kpi-strip{grid-template-columns:repeat(2,1fr);gap:8px}
+  .stock-kpi-strip{grid-template-columns:repeat(2,1fr)}
   .kpi-value{font-size:1.1rem}
   .nav-pill{padding:6px 12px;font-size:.72rem}
   .form-row{flex-direction:column;gap:10px}
@@ -423,9 +433,9 @@ textarea.form-input{resize:vertical;min-height:60px}
   <!-- ===== INVEST PANEL ===== -->
   <div class="panel" id="panel-invest">
     <div class="tab-bar">
-      <button class="tab-btn active" data-tab="savings">Tiết kiệm</button>
-      <button class="tab-btn" data-tab="portfolio">Đầu tư</button>
-      <button class="tab-btn" data-tab="realestate">BĐS</button>
+      <button class="tab-btn active" data-tab="savings">Tiết kiệm NH</button>
+      <button class="tab-btn" data-tab="stocks">Chứng khoán</button>
+      <button class="tab-btn" data-tab="other-assets">Tài sản khác</button>
     </div>
 
     <!-- Savings Tab -->
@@ -458,22 +468,80 @@ textarea.form-input{resize:vertical;min-height:60px}
       <div id="savingsList"></div>
     </div>
 
-    <!-- Portfolio Tab -->
-    <div class="tab-content" id="tab-portfolio">
+    <!-- Stock Tab -->
+    <div class="tab-content" id="tab-stocks">
+      <div class="stock-kpi-strip" id="stockKpiStrip">
+        <div class="kpi"><div class="kpi-label">Tổng vốn</div><div class="kpi-value" id="skKpiCapital">0</div></div>
+        <div class="kpi"><div class="kpi-label">Giá trị HT</div><div class="kpi-value" id="skKpiValue">0</div></div>
+        <div class="kpi"><div class="kpi-label">Lãi/Lỗ</div><div class="kpi-value" id="skKpiPnl">0</div></div>
+        <div class="kpi"><div class="kpi-label">Số mã</div><div class="kpi-value" id="skKpiCount">0</div></div>
+      </div>
       <div class="card">
-        <div class="card-title">Tài khoản chứng khoán</div>
-        <div id="brokerageList"></div>
-        <div style="display:flex;gap:6px;margin-top:8px">
-          <input class="form-input" id="brkName" placeholder="Tên TKCK (VPS, SSI...)" style="flex:1">
-          <input class="form-input money" id="brkCash" placeholder="Số dư" inputmode="numeric" style="flex:1">
-          <button type="button" class="btn btn-gold" onclick="addBrokerage()" style="white-space:nowrap;padding:10px 16px">+ TKCK</button>
+        <div class="card-title">Sổ lệnh</div>
+        <div class="form-group">
+          <label class="form-label">Mã CK</label>
+          <input class="form-input" id="skSymbol" placeholder="VD: VNM, HPG, FPT..." style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Loại lệnh</label>
+          <div class="toggle-group" id="skOrderType">
+            <button class="toggle-opt active-income" data-type="buy">Mua</button>
+            <button class="toggle-opt" data-type="sell">Bán</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Số lượng (cp)</label>
+            <input class="form-input money" id="skQty" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Giá (đ/cp)</label>
+            <input class="form-input money" id="skPrice" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ngày</label>
+          <input class="form-input" type="date" id="skDate" min="2020-01-01" max="2030-12-31">
+        </div>
+        <div class="form-group" style="background:var(--bg3);padding:10px 14px;border-radius:var(--radius-sm);font-size:.78rem;color:var(--text2)" id="skOrderPreview">
+          Thành tiền: <b>0</b>
+        </div>
+        <button class="btn btn-gold btn-block" onclick="addStockOrder()">Đặt lệnh</button>
+      </div>
+      <div class="card" id="stockPortfolioCard">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Danh mục</span>
+          <button class="pill sm" onclick="fetchAllPrices()" id="refreshPriceBtn">&#8635; Cập nhật giá</button>
+        </div>
+        <div id="stockPortfolioList"></div>
+      </div>
+      <div class="card">
+        <div class="collapse-header" onclick="toggleCollapse('brkCollapse')">
+          <span class="card-title" style="margin-bottom:0">Tài khoản CK</span>
+          <span class="collapse-icon" id="brkCollapseIcon">&#9656;</span>
+        </div>
+        <div id="brkCollapse" style="display:none">
+          <div id="brokerageList" style="margin-top:10px"></div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <input class="form-input" id="brkName" placeholder="Tên TKCK (VPS, SSI...)" style="flex:1">
+            <input class="form-input money" id="brkCash" placeholder="Số dư" inputmode="numeric" style="flex:1">
+            <button type="button" class="btn btn-gold" onclick="addBrokerage()" style="white-space:nowrap;padding:10px 16px">+ TKCK</button>
+          </div>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Thêm khoản đầu tư</div>
+        <div class="card-title">Lịch sử lệnh</div>
+        <div id="stockOrderHistory"></div>
+      </div>
+    </div>
+
+    <!-- Other Assets Tab -->
+    <div class="tab-content" id="tab-other-assets">
+      <div class="card">
+        <div class="card-title">Thêm tài sản</div>
         <div class="form-group">
           <label class="form-label">Tên tài sản</label>
-          <input class="form-input" id="invName" placeholder="VD: Vàng SJC, VNM, Bitcoin...">
+          <input class="form-input" id="invName" placeholder="VD: Bitcoin, Vàng SJC, Trái phiếu...">
         </div>
         <div class="form-group">
           <label class="form-label">Loại</label>
@@ -485,35 +553,25 @@ textarea.form-input{resize:vertical;min-height:60px}
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Số lượng</label>
-            <input class="form-input" id="invQty" placeholder="VD: 1, 2.5, 0.3" inputmode="decimal">
+            <label class="form-label">Tổng vốn</label>
+            <input class="form-input money" id="invCapital" placeholder="0" inputmode="numeric">
           </div>
           <div class="form-group">
-            <label class="form-label">Đơn vị</label>
-            <input class="form-input" id="invUnit" placeholder="VD: chỉ, lượng, cổ, coin">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Giá mua / đơn vị</label>
-            <input class="form-input money" id="invBuyPrice" placeholder="0" inputmode="numeric">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Giá hiện tại / đơn vị</label>
-            <input class="form-input money" id="invCurrentPrice" placeholder="0" inputmode="numeric">
+            <label class="form-label">Giá trị hiện tại</label>
+            <input class="form-input money" id="invCurrentVal" placeholder="0" inputmode="numeric">
           </div>
         </div>
         <div class="form-group" style="background:var(--bg3);padding:10px 14px;border-radius:var(--radius-sm);font-size:.78rem;color:var(--text2)" id="invCalcPreview">
-          Tổng vốn: <b>0</b> | Giá trị hiện tại: <b>0</b> | Lãi/Lỗ: <b>0</b>
+          Lãi/Lỗ: <b>0</b>
         </div>
-        <button class="btn btn-gold btn-block" onclick="addInvestment()">Thêm đầu tư</button>
+        <button class="btn btn-gold btn-block" id="invSubmitBtn" onclick="addInvestment()">Thêm tài sản</button>
       </div>
       <div class="card" id="investSummaryCard" style="display:none">
         <div class="card-title">Tổng hợp danh mục</div>
         <div id="investSummary"></div>
       </div>
       <div class="card">
-        <div class="card-title">Chi tiết các lần mua</div>
+        <div class="card-title">Chi tiết tài sản</div>
         <div id="investList"></div>
       </div>
       <div class="card" id="realizedPnLCard" style="display:none">
@@ -521,12 +579,8 @@ textarea.form-input{resize:vertical;min-height:60px}
         <div id="realizedPnLList"></div>
         <div id="realizedPnLSummary" style="margin-top:10px"></div>
       </div>
-    </div>
-
-    <!-- Real Estate Tab -->
-    <div class="tab-content" id="tab-realestate">
       <div class="card">
-        <div class="card-title">Thêm BĐS theo tiến độ</div>
+        <div class="card-title">BĐS theo tiến độ</div>
         <div class="form-group">
           <label class="form-label">Tên BĐS</label>
           <input class="form-input" id="reName" placeholder="VD: Căn hộ Vinhomes, Đất nền Long An...">
@@ -684,6 +738,8 @@ let DATA = {
   realEstates: [],
   brokerageAccounts: [],
   realizedPnL: [],
+  stockOrders: [],
+  stockPriceCache: {},
   aiApiKey: '',
   chatHistory: []
 };
@@ -692,14 +748,17 @@ let selectedCat = null;
 let selectedPerson = '';
 let selectedSubCat = null;
 let txType = 'expense';
-let selectedInvType = 'stock';
+let selectedInvType = 'crypto';
 let editingInvId = null;
 let editingTxId = null;
-let statsMonthOffset = 0; // 0 = current month, -1 = last month, etc.
-let statsPersonFilter = ''; // '' = all, 'Vợ' / 'Chồng' = filter
+let statsMonthOffset = 0;
+let statsPersonFilter = '';
 let supaClient = null;
 let realtimeChannel = null;
 let chatHistory = [];
+let stockOrderType = 'buy';
+let priceRefreshInterval = null;
+let aiAutoAnalyzed = false;
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -709,12 +768,19 @@ document.addEventListener('DOMContentLoaded', () => {
   initSupabase();
   initUI();
   renderAll();
+  // Stock: fetch prices on load & start auto-refresh
+  if ((DATA.stockOrders || []).length > 0) {
+    fetchAllPrices();
+    startPriceRefresh();
+  }
 });
 
 function migrateData() {
   if (!DATA.realEstates) DATA.realEstates = [];
   if (!DATA.brokerageAccounts) DATA.brokerageAccounts = [];
   if (!DATA.realizedPnL) DATA.realizedPnL = [];
+  if (!DATA.stockOrders) DATA.stockOrders = [];
+  if (!DATA.stockPriceCache) DATA.stockPriceCache = {};
   DATA.realEstates.forEach(r => { if (!r.payments) r.payments = []; });
 }
 
@@ -768,6 +834,8 @@ async function connectFamily(code) {
       DATA.realEstates = remote.realEstates || DATA.realEstates;
       DATA.brokerageAccounts = remote.brokerageAccounts || DATA.brokerageAccounts || [];
       DATA.realizedPnL = remote.realizedPnL || DATA.realizedPnL || [];
+      DATA.stockOrders = remote.stockOrders || DATA.stockOrders || [];
+      DATA.stockPriceCache = remote.stockPriceCache || DATA.stockPriceCache || {};
       if (remote.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
       if (remote.chatHistory) DATA.chatHistory = remote.chatHistory;
       if (remote.settings) {
@@ -798,6 +866,8 @@ async function connectFamily(code) {
           DATA.realEstates = remote.realEstates || [];
           DATA.brokerageAccounts = remote.brokerageAccounts || [];
           DATA.realizedPnL = remote.realizedPnL || [];
+          DATA.stockOrders = remote.stockOrders || [];
+          DATA.stockPriceCache = remote.stockPriceCache || {};
           if (remote.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
           if (remote.chatHistory) {
             DATA.chatHistory = remote.chatHistory;
@@ -840,6 +910,8 @@ async function syncToSupabase() {
       realEstates: DATA.realEstates,
       brokerageAccounts: DATA.brokerageAccounts || [],
       realizedPnL: DATA.realizedPnL || [],
+      stockOrders: DATA.stockOrders || [],
+      stockPriceCache: DATA.stockPriceCache || {},
       aiApiKey: DATA.aiApiKey,
       chatHistory: DATA.chatHistory
     };
@@ -935,6 +1007,29 @@ function initUI() {
   document.getElementById('savStart').value = todayStr();
   document.getElementById('invDate').value = todayStr();
   document.getElementById('reDate').value = todayStr();
+  document.getElementById('skDate').value = todayStr();
+
+  // Stock order type toggle
+  document.querySelectorAll('#skOrderType .toggle-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#skOrderType .toggle-opt').forEach(b => {
+        b.classList.remove('active-income', 'active-expense');
+      });
+      stockOrderType = btn.dataset.type;
+      btn.classList.add(stockOrderType === 'buy' ? 'active-income' : 'active-expense');
+    });
+  });
+
+  // Stock order live preview
+  ['skQty','skPrice'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateStockOrderPreview);
+  });
+
+  // Investment simplified preview
+  ['invCapital','invCurrentVal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateInvPreview);
+  });
 
   // Money auto-format (dấu chấm + dấu phẩy song song: 1,000.000 hoặc 1.000,000)
   document.querySelectorAll('.form-input.money').forEach(input => {
@@ -1004,10 +1099,7 @@ function initUI() {
     } catch(e) { calcResult.innerHTML = '<span style="color:var(--red)">Biểu thức không hợp lệ</span>'; }
   }
 
-  // Investment live calc preview
-  ['invQty','invBuyPrice','invCurrentPrice'].forEach(id => {
-    document.getElementById(id).addEventListener('input', updateInvPreview);
-  });
+  // (Investment preview now bound above via invCapital/invCurrentVal)
 
   // Suggested questions
   const sq = document.getElementById('suggestedQ');
@@ -1062,6 +1154,10 @@ function initUI() {
       editInvestment(id);
     } else if (action === 'close-position') {
       closePosition(id);
+    } else if (action === 'del-stock-order') {
+      DATA.stockOrders = (DATA.stockOrders || []).filter(o => o.id !== id);
+      saveLocal(); renderStockTab(); renderAll();
+      showToast('Đã xóa lệnh', 'success');
     }
   });
 }
@@ -1077,6 +1173,7 @@ function renderCatPills() {
     pill.addEventListener('click', () => {
       selectedCat = cat.id;
       selectedSubCat = null;
+      document.getElementById('txDesc').value = cat.name;
       renderCatPills();
       renderSubCatPills(cat);
     });
@@ -1133,7 +1230,7 @@ function renderSubCatPills(cat) {
 function renderInvTypePills() {
   const ip = document.getElementById('invTypePills');
   ip.innerHTML = '';
-  INV_TYPES.forEach(t => {
+  INV_TYPES.filter(t => t.id !== 'stock').forEach(t => {
     const pill = document.createElement('button');
     pill.className = 'pill' + (selectedInvType === t.id ? ' active' : '');
     pill.textContent = t.name;
@@ -1158,7 +1255,7 @@ function renderAll() {
   renderBudgetBars();
   renderMonthTx();
   renderSavings();
-  renderBrokerageAccounts();
+  renderStockTab();
   renderInvestments();
   renderRealizedPnL();
   renderRealEstates();
@@ -1244,8 +1341,11 @@ function calcTotalAssets() {
   let total = 0;
   // Tiết kiệm: gốc + lãi tích lũy
   DATA.savings.forEach(s => { total += s.amount + calcAccruedInterest(s); });
-  // Đầu tư: giá thị trường hiện tại
+  // Đầu tư (tài sản khác): giá thị trường hiện tại
   DATA.investments.forEach(i => total += i.currentValue);
+  // Chứng khoán: giá trị danh mục
+  const stockVal = getStockTotalValue();
+  total += stockVal.totalValue;
   // BĐS: tiền THỰC ĐÃ CHI (sum payments), không phải giá HĐ
   (DATA.realEstates || []).forEach(r => {
     total += (r.payments || []).reduce((s, p) => s + p.amount, 0);
@@ -1261,9 +1361,12 @@ function calcAssetAllocation() {
   let savTotal = 0;
   DATA.savings.forEach(s => { savTotal += s.amount + calcAccruedInterest(s); });
   if (savTotal > 0) alloc['savings'] = { name: 'Tiết kiệm', amount: savTotal, color: 'var(--green)', colorDim: 'var(--green-dim)' };
-  // Đầu tư theo loại
+  // Chứng khoán
+  const stockVal = getStockTotalValue();
+  if (stockVal.totalValue > 0) alloc['stocks'] = { name: 'Chứng khoán', amount: stockVal.totalValue, color: 'var(--blue)', colorDim: 'var(--blue-dim)' };
+  // Đầu tư theo loại (tài sản khác)
   DATA.investments.forEach(i => {
-    const type = getInvTypeById(i.type) || INV_TYPES[6];
+    const type = getInvTypeById(i.type) || INV_TYPES[INV_TYPES.length - 1];
     if (!alloc[i.type]) alloc[i.type] = { name: type.name, amount: 0, color: type.color, colorDim: type.colorDim };
     alloc[i.type].amount += i.currentValue;
   });
@@ -1354,7 +1457,11 @@ function renderAssetSummary() {
     const val = s.amount + calcAccruedInterest(s);
     details.push({ name: `TK: ${s.bank}`, value: val, color: 'var(--green)' });
   });
-  // Investments
+  // Stocks
+  calcStockPortfolio().forEach(p => {
+    details.push({ name: `CK: ${p.symbol} (${formatMoney(p.qty)} cp)`, value: p.currentValue || p.totalCapital, color: 'var(--blue)' });
+  });
+  // Investments (other assets)
   DATA.investments.forEach(i => {
     details.push({ name: `${i.name} (${(getInvTypeById(i.type)||{}).name||''})`, value: i.currentValue, color: (getInvTypeById(i.type)||{}).color||'var(--text3)' });
   });
@@ -1435,6 +1542,13 @@ function renderCashflow() {
     maxVal = Math.max(maxVal, t.income, t.expense);
     return t;
   });
+
+  // UX: ẩn biểu đồ nếu chưa đủ 2 tháng có data
+  const monthsWithData = data.filter(d => d.income > 0 || d.expense > 0).length;
+  if (monthsWithData < 2) {
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:.82rem;text-align:center;padding:20px">Cần ít nhất 2 tháng dữ liệu để hiển thị xu hướng</div>';
+    return;
+  }
 
   const monthLabels = ['Th1','Th2','Th3','Th4','Th5','Th6','Th7','Th8','Th9','Th10','Th11','Th12'];
 
@@ -1800,16 +1914,16 @@ function addSavings() {
 
 // ===== INVESTMENTS =====
 function updateInvPreview() {
-  const qty = parseFloat(document.getElementById('invQty').value.replace(',', '.')) || 0;
-  const buyPrice = parseMoney(document.getElementById('invBuyPrice').value);
-  const curPrice = parseMoney(document.getElementById('invCurrentPrice').value);
-  const capital = Math.round(qty * buyPrice);
-  const current = Math.round(qty * curPrice);
+  const capitalEl = document.getElementById('invCapital');
+  const currentEl = document.getElementById('invCurrentVal');
+  if (!capitalEl || !currentEl) return;
+  const capital = parseMoney(capitalEl.value);
+  const current = parseMoney(currentEl.value);
   const pnl = current - capital;
   const sign = pnl >= 0 ? '+' : '';
   const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
-  document.getElementById('invCalcPreview').innerHTML =
-    `Tổng vốn: <b>${formatMoney(capital)}</b> | Giá trị hiện tại: <b>${formatMoney(current)}</b> | Lãi/Lỗ: <b style="color:${pnlColor}">${sign}${formatMoney(pnl)}</b>`;
+  const preview = document.getElementById('invCalcPreview');
+  if (preview) preview.innerHTML = `Tổng vốn: <b>${formatMoney(capital)}</b> | Giá trị HT: <b>${formatMoney(current)}</b> | Lãi/Lỗ: <b style="color:${pnlColor}">${sign}${formatMoney(pnl)}</b>`;
 }
 
 function renderInvestments() {
@@ -1831,42 +1945,30 @@ function renderInvestments() {
     groups[key].items.push(inv);
   });
 
-  // Render summary (grouped)
   const groupKeys = Object.keys(groups);
   if (groupKeys.length > 0) {
     summaryCard.style.display = 'block';
     summaryContainer.innerHTML = groupKeys.map(key => {
       const g = groups[key];
-      const type = getInvTypeById(g.type) || INV_TYPES[6];
-      let totalQty = 0, totalCapital = 0, totalCurrent = 0;
-      g.items.forEach(inv => {
-        const qty = inv.qty || 1;
-        totalQty += qty;
-        totalCapital += inv.capital;
-        totalCurrent += inv.currentValue;
-      });
-      const avgBuy = totalQty > 0 ? Math.round(totalCapital / totalQty) : 0;
-      const avgCur = totalQty > 0 ? Math.round(totalCurrent / totalQty) : 0;
+      const type = getInvTypeById(g.type) || INV_TYPES[INV_TYPES.length - 1];
+      let totalCapital = 0, totalCurrent = 0;
+      g.items.forEach(inv => { totalCapital += inv.capital; totalCurrent += inv.currentValue; });
       const pnl = totalCurrent - totalCapital;
       const pnlPct = totalCapital ? (pnl / totalCapital * 100) : 0;
       const sign = pnl >= 0 ? '+' : '';
-      const unit = g.items[0]?.unit || '';
       return `<div class="invest-item" style="border:1px solid rgba(0,0,0,.06);border-radius:var(--radius);padding:14px;margin-bottom:8px">
         <div class="invest-header" style="margin-bottom:8px">
           <div class="invest-name" style="font-size:.95rem">${g.name}</div>
           <span class="invest-type-badge" style="background:${type.colorDim};color:${type.color}">${type.name}</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.75rem;color:var(--text2);margin-bottom:8px">
-          <span>Tổng SL: <b style="color:var(--text)">${totalQty} ${unit}</b></span>
-          <span>Giá TB mua: <b style="color:var(--text)">${formatMoney(avgBuy)}</b></span>
           <span>Tổng vốn: <b style="color:var(--text)">${formatMoney(totalCapital)}</b></span>
-          <span>Giá hiện tại: <b style="color:var(--text)">${formatMoney(avgCur)}</b></span>
+          <span>Giá trị HT: <b style="color:var(--text)">${formatMoney(totalCurrent)}</b></span>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--bg3)">
-          <span style="font-size:.75rem;color:var(--text3)">Giá trị: <b style="color:var(--text)">${formatMoney(totalCurrent)}</b></span>
+          <span style="font-size:.75rem;color:var(--text3)">${g.items.length > 1 ? g.items.length + ' khoản' : ''}</span>
           <div class="invest-pnl ${pnl >= 0 ? 'pos' : 'neg'}">${sign}${formatMoney(Math.round(pnl))} (${sign}${pnlPct.toFixed(1)}%)</div>
         </div>
-        ${g.items.length > 1 ? `<div style="font-size:.65rem;color:var(--text3);margin-top:6px">${g.items.length} lần mua</div>` : ''}
       </div>`;
     }).join('');
   }
@@ -1874,14 +1976,10 @@ function renderInvestments() {
   // Render individual entries
   const sorted = [...DATA.investments].sort((a,b) => new Date(b.date||0) - new Date(a.date||0));
   container.innerHTML = sorted.map(inv => {
-    const type = getInvTypeById(inv.type) || INV_TYPES[6];
+    const type = getInvTypeById(inv.type) || INV_TYPES[INV_TYPES.length - 1];
     const pnl = inv.currentValue - inv.capital;
     const pnlPct = inv.capital ? (pnl / inv.capital * 100) : 0;
     const sign = pnl >= 0 ? '+' : '';
-    const qty = inv.qty || '';
-    const unit = inv.unit || '';
-    const buyPrice = inv.buyPrice ? formatMoney(inv.buyPrice) : '';
-    const curPrice = inv.currentPrice ? formatMoney(inv.currentPrice) : '';
     return `<div class="invest-item">
       <div class="invest-header">
         <div>
@@ -1890,19 +1988,13 @@ function renderInvestments() {
         </div>
         <span class="invest-type-badge" style="background:${type.colorDim};color:${type.color}">${type.name}</span>
       </div>
-      <div class="invest-values">
-        ${qty ? `<span style="color:var(--text3)">SL: ${qty} ${unit}</span>` : ''}
-        ${buyPrice ? `<span style="color:var(--text3)">Giá mua: ${buyPrice}</span>` : ''}
-        ${curPrice ? `<span style="color:var(--text3)">Giá HT: ${curPrice}</span>` : ''}
-      </div>
-      <div class="invest-values" style="margin-top:4px">
+      <div class="invest-values" style="margin-top:6px">
         <span style="color:var(--text3)">Vốn: ${formatMoney(inv.capital)}</span>
         <span style="color:var(--text3)">Hiện tại: ${formatMoney(inv.currentValue)}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
         <div class="invest-pnl ${pnl >= 0 ? 'pos' : 'neg'}">${sign}${formatMoney(Math.round(pnl))} (${sign}${pnlPct.toFixed(1)}%)</div>
         <div style="display:flex;gap:4px">
-          ${inv.type === 'stock' ? `<button class="btn-close-pos" data-action="close-position" data-id="${inv.id}">Chốt phiên</button>` : ''}
           <button class="tx-del" data-action="edit-inv" data-id="${inv.id}" style="color:var(--gold)" title="Sửa">&#9998;</button>
           <button class="tx-del" data-action="del-inv" data-id="${inv.id}">&times;</button>
         </div>
@@ -1914,70 +2006,55 @@ function renderInvestments() {
 function editInvestment(id) {
   const inv = DATA.investments.find(i => i.id === id);
   if (!inv) return;
-  // Fill form
   document.getElementById('invName').value = inv.name;
-  document.getElementById('invQty').value = inv.qty;
-  document.getElementById('invUnit').value = inv.unit || '';
-  document.getElementById('invBuyPrice').value = formatMoney(inv.buyPrice);
-  document.getElementById('invCurrentPrice').value = formatMoney(inv.currentPrice);
+  document.getElementById('invCapital').value = formatMoney(inv.capital);
+  document.getElementById('invCurrentVal').value = formatMoney(inv.currentValue);
   document.getElementById('invDate').value = inv.date;
   selectedInvType = inv.type;
   renderInvTypePills();
   editingInvId = id;
-  // Change button text
-  const btn = document.querySelector('button[onclick="addInvestment()"]');
-  if (btn) { btn.textContent = 'Cập nhật đầu tư'; btn.style.background = 'var(--blue)'; }
-  // Switch to invest panel > portfolio tab and scroll
+  const btn = document.getElementById('invSubmitBtn');
+  if (btn) { btn.textContent = 'Cập nhật tài sản'; btn.style.background = 'var(--blue)'; }
   switchToPanel('invest');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.tab-btn[data-tab="portfolio"]').classList.add('active');
+  document.querySelector('.tab-btn[data-tab="other-assets"]').classList.add('active');
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-portfolio').classList.add('active');
+  document.getElementById('tab-other-assets').classList.add('active');
   setTimeout(() => document.getElementById('invName').scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
   updateInvPreview();
 }
 
 function addInvestment() {
   const name = document.getElementById('invName').value.trim();
-  const qty = parseFloat(document.getElementById('invQty').value.replace(',', '.')) || 0;
-  const unit = document.getElementById('invUnit').value.trim();
-  const buyPrice = parseMoney(document.getElementById('invBuyPrice').value);
-  const currentPrice = parseMoney(document.getElementById('invCurrentPrice').value);
+  const capital = parseMoney(document.getElementById('invCapital').value);
+  const currentValue = parseMoney(document.getElementById('invCurrentVal').value);
   const date = document.getElementById('invDate').value;
 
   if (!name) { showToast('Vui lòng nhập tên tài sản', 'error'); return; }
-  if (!qty || qty <= 0) { showToast('Vui lòng nhập số lượng', 'error'); return; }
-  if (!buyPrice) { showToast('Vui lòng nhập giá mua', 'error'); return; }
-  if (!currentPrice) { showToast('Vui lòng nhập giá hiện tại', 'error'); return; }
-
-  const capital = Math.round(qty * buyPrice);
-  const currentValue = Math.round(qty * currentPrice);
+  if (!capital) { showToast('Vui lòng nhập tổng vốn', 'error'); return; }
+  if (!currentValue) { showToast('Vui lòng nhập giá trị hiện tại', 'error'); return; }
 
   if (editingInvId) {
-    // Update existing
     const inv = DATA.investments.find(i => i.id === editingInvId);
     if (inv) {
-      Object.assign(inv, { name, type: selectedInvType, qty, unit, buyPrice, currentPrice, capital, currentValue, date });
+      Object.assign(inv, { name, type: selectedInvType, capital, currentValue, date });
     }
     editingInvId = null;
-    showToast('Đã cập nhật khoản đầu tư', 'success');
-    const btn = document.querySelector('button[onclick="addInvestment()"]');
-    if (btn) { btn.textContent = 'Thêm đầu tư'; btn.style.background = ''; }
+    showToast('Đã cập nhật tài sản', 'success');
+    const btn = document.getElementById('invSubmitBtn');
+    if (btn) { btn.textContent = 'Thêm tài sản'; btn.style.background = ''; }
   } else {
     DATA.investments.push({
-      id: uid(), name, type: selectedInvType, qty, unit,
-      buyPrice, currentPrice, capital, currentValue, date
+      id: uid(), name, type: selectedInvType, capital, currentValue, date
     });
-    showToast('Đã thêm khoản đầu tư', 'success');
+    showToast('Đã thêm tài sản', 'success');
   }
   saveLocal();
   renderAll();
 
   document.getElementById('invName').value = '';
-  document.getElementById('invQty').value = '';
-  document.getElementById('invUnit').value = '';
-  document.getElementById('invBuyPrice').value = '';
-  document.getElementById('invCurrentPrice').value = '';
+  document.getElementById('invCapital').value = '';
+  document.getElementById('invCurrentVal').value = '';
   updateInvPreview();
 }
 
@@ -2107,6 +2184,271 @@ function renderRealizedPnL() {
   </div>`;
 }
 
+// ===== STOCK MODULE =====
+async function fetchPrice(symbol) {
+  const url = `https://finfo-api.vndirect.com.vn/v4/stocks?sort=date&q=code:${symbol}&size=1&fields=code,close,change,pctChange`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    const data = await res.json();
+    return data.data?.[0] || null;
+  } catch(e) {
+    clearTimeout(timeout);
+    return null;
+  }
+}
+
+async function fetchAllPrices() {
+  const portfolio = calcStockPortfolio();
+  const symbols = portfolio.map(p => p.symbol);
+  if (!symbols.length) return;
+  const btn = document.getElementById('refreshPriceBtn');
+  if (btn) btn.textContent = '↻ Đang cập nhật...';
+  DATA.stockPriceCache = DATA.stockPriceCache || {};
+  for (const sym of symbols) {
+    const result = await fetchPrice(sym);
+    if (result) {
+      DATA.stockPriceCache[sym] = {
+        close: result.close, change: result.change, pctChange: result.pctChange,
+        fetchedAt: new Date().toISOString()
+      };
+    }
+  }
+  saveLocal();
+  renderStockTab();
+  if (btn) btn.textContent = '↻ Cập nhật giá';
+}
+
+function isMarketHours() {
+  const now = new Date();
+  const day = now.getDay();
+  if (day === 0 || day === 6) return false;
+  const utcH = now.getUTCHours(), utcM = now.getUTCMinutes();
+  const vnTime = ((utcH + 7) % 24) * 60 + utcM;
+  return vnTime >= 540 && vnTime <= 870; // 9:00-14:30
+}
+
+function startPriceRefresh() {
+  if (priceRefreshInterval) clearInterval(priceRefreshInterval);
+  priceRefreshInterval = setInterval(() => {
+    if (isMarketHours()) fetchAllPrices();
+  }, 30000);
+}
+
+function calcStockPortfolio() {
+  const portfolio = {};
+  const orders = [...(DATA.stockOrders || [])].sort((a,b) => new Date(a.date) - new Date(b.date));
+  orders.forEach(order => {
+    const sym = order.symbol.toUpperCase();
+    if (!portfolio[sym]) portfolio[sym] = { symbol: sym, totalBuyQty: 0, totalBuyValue: 0, totalSellQty: 0 };
+    if (order.type === 'buy') {
+      portfolio[sym].totalBuyQty += order.qty;
+      portfolio[sym].totalBuyValue += order.qty * order.price;
+    } else {
+      portfolio[sym].totalSellQty += order.qty;
+    }
+  });
+  const result = [];
+  Object.values(portfolio).forEach(p => {
+    const remainQty = p.totalBuyQty - p.totalSellQty;
+    if (remainQty <= 0) return;
+    const avgBuyPrice = p.totalBuyQty > 0 ? Math.round(p.totalBuyValue / p.totalBuyQty) : 0;
+    const totalCapital = avgBuyPrice * remainQty;
+    const cached = (DATA.stockPriceCache || {})[p.symbol];
+    const currentPrice = cached ? Math.round(cached.close * 1000) : null;
+    const currentValue = currentPrice ? currentPrice * remainQty : null;
+    const pnl = currentValue !== null ? currentValue - totalCapital : null;
+    const pnlPct = totalCapital > 0 && pnl !== null ? (pnl / totalCapital * 100) : null;
+    result.push({
+      symbol: p.symbol, qty: remainQty, avgBuyPrice, totalCapital,
+      currentPrice, currentValue, pnl, pnlPct,
+      change: cached?.change, pctChange: cached?.pctChange, fetchedAt: cached?.fetchedAt
+    });
+  });
+  return result;
+}
+
+function getStockTotalValue() {
+  const portfolio = calcStockPortfolio();
+  let totalCapital = 0, totalValue = 0;
+  portfolio.forEach(p => {
+    totalCapital += p.totalCapital;
+    totalValue += p.currentValue || p.totalCapital;
+  });
+  return { totalCapital, totalValue, pnl: totalValue - totalCapital, count: portfolio.length };
+}
+
+function renderStockTab() {
+  renderStockKPI();
+  renderStockPortfolio();
+  renderStockOrderHistory();
+  renderBrokerageAccounts();
+}
+
+function renderStockKPI() {
+  const { totalCapital, totalValue, pnl, count } = getStockTotalValue();
+  const pnlColor = pnl >= 0 ? 'green' : 'red';
+  const sign = pnl >= 0 ? '+' : '-';
+  const strip = document.getElementById('stockKpiStrip');
+  if (strip) {
+    strip.innerHTML = `
+      <div class="kpi"><div class="kpi-label">Tổng vốn</div><div class="kpi-value">${smartFormat(totalCapital)}</div></div>
+      <div class="kpi"><div class="kpi-label">Giá trị HT</div><div class="kpi-value">${smartFormat(totalValue)}</div></div>
+      <div class="kpi"><div class="kpi-label">Lãi/Lỗ</div><div class="kpi-value ${pnlColor}">${sign}${smartFormat(Math.abs(pnl))}</div></div>
+      <div class="kpi"><div class="kpi-label">Số mã</div><div class="kpi-value">${count}</div></div>`;
+  }
+}
+
+function renderStockPortfolio() {
+  const container = document.getElementById('stockPortfolioList');
+  if (!container) return;
+  const portfolio = calcStockPortfolio();
+  if (!portfolio.length) {
+    container.innerHTML = '<p style="font-size:.8rem;color:var(--text3);padding:16px 0;text-align:center">Chưa có mã nào trong danh mục</p>';
+    return;
+  }
+  container.innerHTML = portfolio.map(p => {
+    const hasPriceData = p.currentPrice !== null;
+    const pnlColor = (p.pnl || 0) >= 0 ? 'var(--green)' : 'var(--red)';
+    const dotColor = (p.pnl || 0) >= 0 ? 'var(--green)' : 'var(--red)';
+    const sign = (p.pnl || 0) >= 0 ? '+' : '';
+    let priceBadge = '';
+    if (!hasPriceData) {
+      priceBadge = '<span class="price-badge manual">Giá thủ công</span>';
+    } else if (p.fetchedAt) {
+      const age = (Date.now() - new Date(p.fetchedAt).getTime()) / 1000 / 60;
+      if (age > 60) priceBadge = '<span class="price-badge stale">Giá T-1</span>';
+    }
+    return `<div class="stock-portfolio-item">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${dotColor};flex-shrink:0"></div>
+        <span style="font-weight:600;font-size:1rem;color:var(--text)">${p.symbol}</span>
+        <span style="font-size:.75rem;color:var(--text3)">${formatMoney(p.qty)} cp</span>
+        ${priceBadge}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:.78rem;color:var(--text2)">
+        <span>Vốn: <b style="color:var(--text)">${smartFormat(p.totalCapital)}</b></span>
+        <span>Giá HT: <b style="color:var(--text)">${hasPriceData ? formatMoney(p.currentPrice) : '—'}</b></span>
+        <span>Giá vốn BQ: <b style="color:var(--text)">${formatMoney(p.avgBuyPrice)}</b></span>
+        <span style="color:${pnlColor}">Lãi: <b>${hasPriceData ? sign + smartFormat(Math.abs(p.pnl)) + ' (' + sign + p.pnlPct.toFixed(1) + '%)' : '—'}</b></span>
+      </div>
+      ${!hasPriceData ? `<div style="margin-top:6px;display:flex;gap:6px;align-items:center">
+        <input class="form-input money" id="manualPrice-${p.symbol}" placeholder="Nhập giá HT (đ/cp)" inputmode="numeric" style="flex:1;padding:6px 10px;font-size:.82rem">
+        <button type="button" class="pill sm" onclick="setManualPrice('${p.symbol}')">Cập nhật</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+  container.querySelectorAll('.form-input.money').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^\d]/g, '');
+      e.target.value = raw ? formatMoney(parseInt(raw)) : '';
+    });
+  });
+}
+
+function setManualPrice(symbol) {
+  const input = document.getElementById('manualPrice-' + symbol);
+  if (!input) return;
+  const price = parseMoney(input.value);
+  if (!price) return;
+  DATA.stockPriceCache = DATA.stockPriceCache || {};
+  DATA.stockPriceCache[symbol] = {
+    close: price / 1000, change: 0, pctChange: 0,
+    fetchedAt: new Date().toISOString()
+  };
+  saveLocal(); renderStockTab(); renderAll();
+  showToast('Đã cập nhật giá ' + symbol, 'success');
+}
+
+function renderStockOrderHistory() {
+  const container = document.getElementById('stockOrderHistory');
+  if (!container) return;
+  const orders = [...(DATA.stockOrders || [])].sort((a,b) => new Date(b.date) - new Date(a.date));
+  if (!orders.length) {
+    container.innerHTML = '<p style="font-size:.8rem;color:var(--text3);padding:16px 0;text-align:center">Chưa có lệnh nào</p>';
+    return;
+  }
+  container.innerHTML = orders.map(o => {
+    const isBuy = o.type === 'buy';
+    const color = isBuy ? 'var(--green)' : 'var(--red)';
+    const label = isBuy ? 'Mua' : 'Bán';
+    const total = o.qty * o.price;
+    return `<div class="tx-item">
+      <div class="tx-cat-dot" style="background:${color}"></div>
+      <div class="tx-info">
+        <div class="tx-desc"><span style="color:${color};font-weight:500">${label}</span> ${o.symbol} × ${formatMoney(o.qty)} cp @ ${formatMoney(o.price)}</div>
+        <div class="tx-date">${formatDate(o.date)}</div>
+      </div>
+      <div class="tx-amount ${isBuy ? 'expense' : 'income'}">${isBuy ? '-' : '+'}${smartFormat(total)}</div>
+      <button class="tx-del" data-action="del-stock-order" data-id="${o.id}">&times;</button>
+    </div>`;
+  }).join('');
+}
+
+function addStockOrder() {
+  const symbol = document.getElementById('skSymbol').value.trim().toUpperCase();
+  const qty = parseMoney(document.getElementById('skQty').value);
+  const price = parseMoney(document.getElementById('skPrice').value);
+  const date = document.getElementById('skDate').value;
+  if (!symbol) { showToast('Vui lòng nhập mã CK', 'error'); return; }
+  if (!qty) { showToast('Vui lòng nhập số lượng', 'error'); return; }
+  if (!price) { showToast('Vui lòng nhập giá', 'error'); return; }
+  if (!date) { showToast('Vui lòng chọn ngày', 'error'); return; }
+  if (stockOrderType === 'sell') {
+    const portfolio = calcStockPortfolio();
+    const holding = portfolio.find(p => p.symbol === symbol);
+    if (!holding || holding.qty < qty) {
+      showToast(`Không đủ ${symbol} để bán (đang nắm: ${holding ? formatMoney(holding.qty) : 0} cp)`, 'error');
+      return;
+    }
+  }
+  DATA.stockOrders = DATA.stockOrders || [];
+  DATA.stockOrders.push({ id: uid(), symbol, type: stockOrderType, qty, price, date });
+  saveLocal(); renderStockTab(); renderAll();
+  showToast(`Đã ${stockOrderType === 'buy' ? 'mua' : 'bán'} ${symbol}`, 'success');
+  document.getElementById('skSymbol').value = '';
+  document.getElementById('skQty').value = '';
+  document.getElementById('skPrice').value = '';
+  document.getElementById('skOrderPreview').innerHTML = 'Thành tiền: <b>0</b>';
+  // Fetch price for new symbol
+  if (stockOrderType === 'buy') {
+    fetchPrice(symbol).then(result => {
+      if (result) {
+        DATA.stockPriceCache = DATA.stockPriceCache || {};
+        DATA.stockPriceCache[symbol] = {
+          close: result.close, change: result.change, pctChange: result.pctChange,
+          fetchedAt: new Date().toISOString()
+        };
+        saveLocal(); renderStockTab();
+      }
+    });
+    startPriceRefresh();
+  }
+}
+
+function updateStockOrderPreview() {
+  const qty = parseMoney(document.getElementById('skQty')?.value);
+  const price = parseMoney(document.getElementById('skPrice')?.value);
+  const total = qty * price;
+  const preview = document.getElementById('skOrderPreview');
+  if (preview) preview.innerHTML = `Thành tiền: <b>${formatMoney(total)}</b>`;
+}
+
+function toggleCollapse(id) {
+  const body = document.getElementById(id);
+  const icon = document.getElementById(id + 'Icon');
+  if (!body) return;
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    if (icon) icon.textContent = '▾';
+  } else {
+    body.style.display = 'none';
+    if (icon) icon.textContent = '▸';
+  }
+}
+
 // ===== REAL ESTATE =====
 function addRealEstate() {
   const name = document.getElementById('reName').value.trim();
@@ -2226,24 +2568,26 @@ function renderRealEstates() {
 
 // ===== AI CHAT =====
 function initAIPanel() {
-  // Render existing chat history
   if (chatHistory.length > 0) renderChat();
-  // Auto-analyze budget warnings
+  // Auto-analyze: trigger 1 lần/session nếu có cảnh báo ngân sách
+  if (aiAutoAnalyzed) return;
   const income = getMonthlyIncome();
-  if (income && chatHistory.length === 0) {
-    const mk = currentMonthKey();
-    const warnings = [];
-    CATEGORIES.forEach(cat => {
-      const spent = getCatSpending(mk, cat.id);
-      const pct = spent / income * 100;
-      if (pct > cat.max) warnings.push(`${cat.name}: ${pct.toFixed(1)}% (vượt ${cat.max}%)`);
-      else if (pct > cat.max * 0.85) warnings.push(`${cat.name}: ${pct.toFixed(1)}% (gần ${cat.max}%)`);
-    });
-    if (warnings.length) {
-      const msg = 'Phân tích cảnh báo ngân sách của tôi:\n' + warnings.join('\n');
-      chatHistory.push({ role: 'assistant', content: 'Tôi nhận thấy một số cảnh báo ngân sách. Hãy hỏi tôi để được tư vấn chi tiết!' });
-      renderChat();
-    }
+  const apiKey = DATA.aiApiKey || document.getElementById('aiApiKey').value.trim();
+  if (!income || !apiKey) return;
+  const mk = currentMonthKey();
+  const warnings = [];
+  CATEGORIES.forEach(cat => {
+    const spent = getCatSpending(mk, cat.id);
+    const pct = spent / income * 100;
+    if (pct > cat.max) warnings.push(`${cat.name}: ${pct.toFixed(1)}% (vượt ${cat.max}%)`);
+    else if (pct > cat.max * 0.85) warnings.push(`${cat.name}: ${pct.toFixed(1)}% (gần ${cat.max}%)`);
+  });
+  if (warnings.length) {
+    aiAutoAnalyzed = true;
+    // Auto send analysis request
+    const autoMsg = 'Phân tích cảnh báo ngân sách tháng này:\n' + warnings.join('\n') + '\n\nĐưa ra nhận xét ngắn gọn và gợi ý điều chỉnh.';
+    document.getElementById('chatInput').value = autoMsg;
+    sendChat();
   }
 }
 
@@ -2295,7 +2639,8 @@ Thông tin tài chính hiện tại:
 - Chi tiêu tháng: ${formatMoney(totals.expense)}
 - Phân bổ ngân sách:\n${budgetInfo}
 - Tiết kiệm: ${DATA.savings.length} sổ, tổng ${formatMoney(DATA.savings.reduce((s,i)=>s+i.amount,0))}
-- Đầu tư: ${DATA.investments.length} khoản, tổng ${formatMoney(DATA.investments.reduce((s,i)=>s+i.currentValue,0))}
+- Chứng khoán: ${(() => { const sv = getStockTotalValue(); const p = calcStockPortfolio(); return `${sv.count} mã, vốn ${formatMoney(sv.totalCapital)}, giá trị ${formatMoney(sv.totalValue)}, lãi/lỗ ${sv.pnl>=0?'+':''}${formatMoney(sv.pnl)}` + (p.length ? '\\n  Chi tiết: ' + p.map(s => `${s.symbol} ${formatMoney(s.qty)}cp vốn ${smartFormat(s.totalCapital)} ${s.pnl!==null?(s.pnl>=0?'+':'')+smartFormat(s.pnl)+'('+((s.pnlPct||0)>=0?'+':'')+(s.pnlPct||0).toFixed(1)+'%)':'chưa có giá'}`).join(', ') : ''); })()}
+- Tài sản khác: ${DATA.investments.length} khoản, tổng ${formatMoney(DATA.investments.reduce((s,i)=>s+i.currentValue,0))}
 - BĐS: ${(DATA.realEstates||[]).length} căn, đã chi ${formatMoney((DATA.realEstates||[]).reduce((s,r)=>s+(r.payments||[]).reduce((ss,p)=>ss+p.amount,0),0))}
 - TKCK: ${(DATA.brokerageAccounts||[]).length} TK, tiền mặt ${formatMoney((DATA.brokerageAccounts||[]).reduce((s,b)=>s+(b.cashBalance||0),0))}
 - Đã chốt: ${(DATA.realizedPnL||[]).length} lệnh, lãi/lỗ ${formatMoney((DATA.realizedPnL||[]).reduce((s,r)=>s+r.pnl,0))}
@@ -2401,6 +2746,11 @@ function importData(e) {
       if (imported.transactions) DATA.transactions = imported.transactions;
       if (imported.savings) DATA.savings = imported.savings;
       if (imported.investments) DATA.investments = imported.investments;
+      if (imported.stockOrders) DATA.stockOrders = imported.stockOrders;
+      if (imported.stockPriceCache) DATA.stockPriceCache = imported.stockPriceCache;
+      if (imported.realEstates) DATA.realEstates = imported.realEstates;
+      if (imported.brokerageAccounts) DATA.brokerageAccounts = imported.brokerageAccounts;
+      if (imported.realizedPnL) DATA.realizedPnL = imported.realizedPnL;
       saveLocal();
       renderAll();
       showToast('Đã nhập dữ liệu thành công', 'success');
@@ -2419,7 +2769,13 @@ function resetData() {
     transactions: [],
     savings: [],
     investments: [],
-    aiApiKey: DATA.aiApiKey
+    realEstates: [],
+    brokerageAccounts: [],
+    realizedPnL: [],
+    stockOrders: [],
+    stockPriceCache: {},
+    aiApiKey: DATA.aiApiKey,
+    chatHistory: []
   };
   saveLocal();
   renderAll();
