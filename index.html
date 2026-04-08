@@ -759,6 +759,7 @@ let chatHistory = [];
 let stockOrderType = 'buy';
 let priceRefreshInterval = null;
 let aiAutoAnalyzed = false;
+let editingStockOrderId = null;
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -1154,6 +1155,8 @@ function initUI() {
       editInvestment(id);
     } else if (action === 'close-position') {
       closePosition(id);
+    } else if (action === 'edit-stock-order') {
+      editStockOrder(id);
     } else if (action === 'del-stock-order') {
       DATA.stockOrders = (DATA.stockOrders || []).filter(o => o.id !== id);
       saveLocal(); renderStockTab(); renderAll();
@@ -2397,6 +2400,7 @@ function renderStockOrderHistory() {
         <div class="tx-date">${formatDate(o.date)}</div>
       </div>
       <div class="tx-amount ${isBuy ? 'expense' : 'income'}">${isBuy ? '-' : '+'}${smartFormat(total)}</div>
+      <button class="tx-del" data-action="edit-stock-order" data-id="${o.id}" style="color:var(--gold)" title="Sửa">&#9998;</button>
       <button class="tx-del" data-action="del-stock-order" data-id="${o.id}">&times;</button>
     </div>`;
   }).join('');
@@ -2420,9 +2424,18 @@ function addStockOrder() {
     }
   }
   DATA.stockOrders = DATA.stockOrders || [];
-  DATA.stockOrders.push({ id: uid(), symbol, type: stockOrderType, qty, price, date });
+  if (editingStockOrderId) {
+    const order = DATA.stockOrders.find(o => o.id === editingStockOrderId);
+    if (order) Object.assign(order, { symbol, type: stockOrderType, qty, price, date });
+    editingStockOrderId = null;
+    const btn = document.querySelector('button[onclick="addStockOrder()"]');
+    if (btn) { btn.textContent = 'Đặt lệnh'; btn.style.background = ''; }
+    showToast('Đã cập nhật lệnh', 'success');
+  } else {
+    DATA.stockOrders.push({ id: uid(), symbol, type: stockOrderType, qty, price, date });
+    showToast(`Đã ${stockOrderType === 'buy' ? 'mua' : 'bán'} ${symbol}`, 'success');
+  }
   saveLocal(); renderStockTab(); renderAll();
-  showToast(`Đã ${stockOrderType === 'buy' ? 'mua' : 'bán'} ${symbol}`, 'success');
   document.getElementById('skSymbol').value = '';
   document.getElementById('skQty').value = '';
   document.getElementById('skPrice').value = '';
@@ -2449,6 +2462,25 @@ function updateStockOrderPreview() {
   const total = qty * price;
   const preview = document.getElementById('skOrderPreview');
   if (preview) preview.innerHTML = `Thành tiền: <b>${formatMoney(total)}</b>`;
+}
+
+function editStockOrder(id) {
+  const order = (DATA.stockOrders || []).find(o => o.id === id);
+  if (!order) return;
+  document.getElementById('skSymbol').value = order.symbol;
+  document.getElementById('skQty').value = formatMoney(order.qty);
+  document.getElementById('skPrice').value = formatMoney(order.price);
+  document.getElementById('skDate').value = order.date;
+  stockOrderType = order.type;
+  document.querySelectorAll('#skOrderType .toggle-opt').forEach(b => {
+    b.classList.remove('active-income', 'active-expense');
+  });
+  document.querySelector(`#skOrderType .toggle-opt[data-type="${order.type}"]`).classList.add(order.type === 'buy' ? 'active-income' : 'active-expense');
+  editingStockOrderId = id;
+  const btn = document.querySelector('button[onclick="addStockOrder()"]');
+  if (btn) { btn.textContent = 'Cập nhật lệnh'; btn.style.background = 'var(--blue)'; }
+  updateStockOrderPreview();
+  document.getElementById('skSymbol').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function quickSellStock(symbol, qty, currentPrice) {
