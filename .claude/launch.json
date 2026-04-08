@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wealth",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["C:\\Users\\Administrator\\Desktop\\TCGD\\serve.js"],
+      "port": 4568,
+      "autoPort": false
+    }
+  ]
+}
