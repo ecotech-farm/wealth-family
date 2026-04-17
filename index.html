@@ -770,6 +770,7 @@ let editingInvId = null;
 let editingTxId = null;
 let statsMonthOffset = 0;
 let statsPersonFilter = '';
+let supabasePullCompleted = false; // Safety: don't sync to Supabase until first pull completes
 let supaClient = null;
 let realtimeChannel = null;
 let chatHistory = [];
@@ -1080,6 +1081,9 @@ function initSupabase() {
     supaClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     if (DATA.settings.familyCode) {
       connectFamily(DATA.settings.familyCode);
+    } else {
+      // No family code = no sync needed, local-only mode is safe
+      supabasePullCompleted = true;
     }
     // Keep-alive ping: prevents Supabase free tier from pausing after 7 days
     keepAliveSupabase();
@@ -1133,6 +1137,8 @@ async function connectFamily(code) {
       const keyInput = document.getElementById('aiApiKey');
       if (keyInput && DATA.aiApiKey) keyInput.value = DATA.aiApiKey;
     }
+    // Pull completed - safe to sync now
+    supabasePullCompleted = true;
 
     // Subscribe to realtime changes
     realtimeChannel = supaClient
@@ -1180,15 +1186,34 @@ async function connectFamily(code) {
   } catch(e) {
     console.error('Connect error:', e);
     setSyncStatus('offline', 'Lỗi kết nối');
+    // DO NOT set supabasePullCompleted = true here.
+    // If pull fails, we don't want to accidentally overwrite remote data.
   }
 }
 
 async function syncToSupabase() {
   if (!supaClient || !DATA.settings.familyCode) return;
+  // CRITICAL SAFETY: Don't sync until we've pulled from remote first.
+  // Prevents empty local data from overwriting remote data on fresh browser load.
+  if (!supabasePullCompleted) {
+    console.warn('Sync blocked: pull not completed yet');
+    return;
+  }
+  // CRITICAL SAFETY 2: Don't sync if all data is empty (likely fresh load with no data)
+  const isEmpty = (DATA.transactions || []).length === 0 &&
+                  (DATA.savings || []).length === 0 &&
+                  (DATA.investments || []).length === 0 &&
+                  (DATA.realEstates || []).length === 0 &&
+                  (DATA.brokerageAccounts || []).length === 0 &&
+                  (DATA.stockOrders || []).length === 0;
+  if (isEmpty) {
+    console.warn('Sync blocked: all data empty (preventing accidental overwrite)');
+    return;
+  }
   setSyncStatus('syncing', 'Đang đồng bộ...');
   try {
     const payload = {
-      settings: { familyName: DATA.settings.familyName, monthlyIncome: DATA.settings.monthlyIncome },
+      settings: { familyName: DATA.settings.familyName, monthlyIncome: DATA.settings.monthlyIncome, persons: DATA.settings.persons || [] },
       transactions: DATA.transactions,
       savings: DATA.savings,
       investments: DATA.investments,
@@ -3065,6 +3090,7 @@ function saveSettings() {
   showToast('Đã lưu cài đặt', 'success');
 
   if (codeChanged && newCode) {
+    supabasePullCompleted = false; // Reset: need to pull from new family first
     connectFamily(newCode);
   } else if (!newCode) {
     if (realtimeChannel) {
