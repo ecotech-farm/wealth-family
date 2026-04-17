@@ -308,6 +308,10 @@ textarea.form-input{resize:vertical;min-height:60px}
   <div class="header">
     <div class="logo">WEALTH <span id="familyNameDisplay"></span></div>
     <div class="header-right">
+      <div class="sync-indicator" id="backupIndicator" title="Trạng thái sao lưu" style="cursor:pointer" onclick="manualBackupDownload()">
+        <div class="sync-dot connected"></div>
+        <span id="backupText">An toàn</span>
+      </div>
       <div class="sync-indicator">
         <div class="sync-dot offline" id="syncDot"></div>
         <span id="syncText">Chưa kết nối</span>
@@ -782,6 +786,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initSupabase();
   initUI();
   renderAll();
+  updateBackupStatus();
+  // Refresh backup status every minute
+  setInterval(updateBackupStatus, 60 * 1000);
   // Stock: fetch prices on load & start auto-refresh
   if ((DATA.stockOrders || []).length > 0) {
     fetchAllPrices();
@@ -798,6 +805,82 @@ function migrateData() {
   DATA.realEstates.forEach(r => { if (!r.payments) r.payments = []; });
 }
 
+// ===== INDEXEDDB BACKUP LAYER (more resilient than localStorage) =====
+let _idbDB = null;
+function openIDB() {
+  return new Promise((resolve, reject) => {
+    if (_idbDB) { resolve(_idbDB); return; }
+    const req = indexedDB.open('wealth_db', 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('data')) db.createObjectStore('data');
+      if (!db.objectStoreNames.contains('versions')) db.createObjectStore('versions', { keyPath: 'ts' });
+    };
+    req.onsuccess = (e) => { _idbDB = e.target.result; resolve(_idbDB); };
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function idbSet(key, value) {
+  try {
+    const db = await openIDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('data', 'readwrite');
+      tx.objectStore('data').put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  } catch(e) { console.error('IDB set failed:', e); }
+}
+
+async function idbGet(key) {
+  try {
+    const db = await openIDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('data', 'readonly');
+      const req = tx.objectStore('data').get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  } catch(e) { return null; }
+}
+
+async function idbAddVersion(ts, data) {
+  try {
+    const db = await openIDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction('versions', 'readwrite');
+      tx.objectStore('versions').put({ ts, data });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch(e) {}
+}
+
+async function idbGetAllVersions() {
+  try {
+    const db = await openIDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction('versions', 'readonly');
+      const req = tx.objectStore('versions').getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+  } catch(e) { return []; }
+}
+
+async function idbDeleteOldVersions(keepCount) {
+  try {
+    const versions = await idbGetAllVersions();
+    if (versions.length <= keepCount) return;
+    versions.sort((a, b) => b.ts - a.ts);
+    const toDelete = versions.slice(keepCount);
+    const db = await openIDB();
+    const tx = db.transaction('versions', 'readwrite');
+    toDelete.forEach(v => tx.objectStore('versions').delete(v.ts));
+  } catch(e) {}
+}
+
 function loadLocal() {
   try {
     const saved = localStorage.getItem('wealth_data');
@@ -805,26 +888,71 @@ function loadLocal() {
       const parsed = JSON.parse(saved);
       DATA = { ...DATA, ...parsed };
       if (!DATA.chatHistory) DATA.chatHistory = [];
+      return;
     }
   } catch(e) {}
+  // Fallback: Load from IndexedDB if localStorage is empty
+  idbGet('wealth_data').then(val => {
+    if (val) {
+      try {
+        const parsed = JSON.parse(val);
+        DATA = { ...DATA, ...parsed };
+        if (!DATA.chatHistory) DATA.chatHistory = [];
+        localStorage.setItem('wealth_data', val); // Re-sync to localStorage
+        migrateData();
+        renderAll();
+        showToast('Đã khôi phục dữ liệu từ IndexedDB', 'success');
+      } catch(e) {}
+    }
+  });
 }
 
 function saveLocal() {
   const json = JSON.stringify(DATA);
+  const ts = Date.now();
   localStorage.setItem('wealth_data', json);
-  // Multi-version backup (keep last 30 versions, tagged by timestamp)
+  localStorage.setItem('wealth_last_save', ts);
+  // Mirror to IndexedDB (more resilient than localStorage)
+  idbSet('wealth_data', json);
+  idbAddVersion(ts, json);
+  idbDeleteOldVersions(60);
+  // Multi-version backup in localStorage (keep last 30 versions)
   try {
     const versions = JSON.parse(localStorage.getItem('wealth_versions') || '[]');
-    versions.unshift({ ts: Date.now(), data: json });
-    // Keep only last 30
+    versions.unshift({ ts, data: json });
     const trimmed = versions.slice(0, 30);
     localStorage.setItem('wealth_versions', JSON.stringify(trimmed));
   } catch(e) { console.error('Version backup failed:', e); }
-  // Increment save counter; auto-download every 20 saves
+  // Save counter; auto-download every 5 saves (instead of 20)
   const count = parseInt(localStorage.getItem('wealth_save_count') || '0') + 1;
   localStorage.setItem('wealth_save_count', count);
-  if (count % 20 === 0) { autoBackupDownload(); }
+  if (count % 5 === 0) { autoBackupDownload(); }
   syncToSupabase();
+  updateBackupStatus();
+}
+
+function updateBackupStatus() {
+  const text = document.getElementById('backupText');
+  const indicator = document.getElementById('backupIndicator');
+  if (!text || !indicator) return;
+  const lastSave = parseInt(localStorage.getItem('wealth_last_save') || '0');
+  const lastDownload = parseInt(localStorage.getItem('wealth_last_download') || '0');
+  const now = Date.now();
+  const versions = JSON.parse(localStorage.getItem('wealth_versions') || '[]').length;
+
+  // Warn if no file backup in last 7 days
+  const daysSinceDownload = lastDownload ? Math.floor((now - lastDownload) / (1000 * 60 * 60 * 24)) : 999;
+  const dot = indicator.querySelector('.sync-dot');
+
+  if (daysSinceDownload > 7) {
+    text.textContent = 'Cần backup';
+    if (dot) dot.className = 'sync-dot syncing';
+    indicator.title = 'Đã ' + (daysSinceDownload > 100 ? 'quá lâu' : daysSinceDownload + ' ngày') + ' chưa tải file backup. Bấm để tải ngay!';
+  } else {
+    text.textContent = `${versions} phiên bản`;
+    if (dot) dot.className = 'sync-dot connected';
+    indicator.title = `${versions} phiên bản trong máy. Backup file gần nhất: ${daysSinceDownload} ngày trước. Bấm để tải ngay.`;
+  }
 }
 
 function autoBackupDownload() {
@@ -838,6 +966,8 @@ function autoBackupDownload() {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    localStorage.setItem('wealth_last_download', Date.now());
+    updateBackupStatus();
     showToast('Đã tải backup tự động', 'success');
   } catch(e) { console.error('Auto backup failed:', e); }
 }
@@ -853,6 +983,8 @@ function manualBackupDownload() {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    localStorage.setItem('wealth_last_download', Date.now());
+    updateBackupStatus();
     showToast('Đã tải file backup', 'success');
   } catch(e) { showToast('Lỗi tạo backup: ' + e.message, 'error'); }
 }
@@ -949,9 +1081,20 @@ function initSupabase() {
     if (DATA.settings.familyCode) {
       connectFamily(DATA.settings.familyCode);
     }
+    // Keep-alive ping: prevents Supabase free tier from pausing after 7 days
+    keepAliveSupabase();
+    setInterval(keepAliveSupabase, 6 * 60 * 60 * 1000); // every 6 hours
   } catch(e) {
     console.error('Supabase init error:', e);
   }
+}
+
+async function keepAliveSupabase() {
+  if (!supaClient) return;
+  try {
+    // Lightweight query to keep project active (prevents 7-day auto-pause)
+    await supaClient.from('families').select('id').limit(1);
+  } catch(e) { /* silent - don't spam error if offline */ }
 }
 
 async function connectFamily(code) {
