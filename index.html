@@ -1101,6 +1101,14 @@ async function keepAliveSupabase() {
   } catch(e) { /* silent - don't spam error if offline */ }
 }
 
+// Merge two arrays by id: keeps all unique records, prefers local on id conflict
+function mergeById(local, remote) {
+  const map = new Map();
+  (remote || []).forEach(r => { if (r && r.id) map.set(r.id, r); });
+  (local || []).forEach(l => { if (l && l.id) map.set(l.id, l); }); // local wins on conflict
+  return Array.from(map.values());
+}
+
 async function connectFamily(code) {
   if (!supaClient || !code) return;
   setSyncStatus('syncing', 'Đang kết nối...');
@@ -1115,25 +1123,25 @@ async function connectFamily(code) {
     // Load existing data
     const { data, error } = await supaClient.from('families').select('data').eq('id', code).single();
     if (data && data.data) {
-      // Merge remote data
+      // MERGE remote + local by ID (preserves any local records not in remote)
       const remote = data.data;
-      DATA.transactions = remote.transactions || DATA.transactions;
-      DATA.savings = remote.savings || DATA.savings;
-      DATA.investments = remote.investments || DATA.investments;
-      DATA.realEstates = remote.realEstates || DATA.realEstates;
-      DATA.brokerageAccounts = remote.brokerageAccounts || DATA.brokerageAccounts || [];
-      DATA.realizedPnL = remote.realizedPnL || DATA.realizedPnL || [];
-      DATA.stockOrders = remote.stockOrders || DATA.stockOrders || [];
-      DATA.stockPriceCache = remote.stockPriceCache || DATA.stockPriceCache || {};
-      if (remote.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
-      if (remote.chatHistory) DATA.chatHistory = remote.chatHistory;
+      DATA.transactions = mergeById(DATA.transactions || [], remote.transactions || []);
+      DATA.savings = mergeById(DATA.savings || [], remote.savings || []);
+      DATA.investments = mergeById(DATA.investments || [], remote.investments || []);
+      DATA.realEstates = mergeById(DATA.realEstates || [], remote.realEstates || []);
+      DATA.brokerageAccounts = mergeById(DATA.brokerageAccounts || [], remote.brokerageAccounts || []);
+      DATA.realizedPnL = mergeById(DATA.realizedPnL || [], remote.realizedPnL || []);
+      DATA.stockOrders = mergeById(DATA.stockOrders || [], remote.stockOrders || []);
+      DATA.stockPriceCache = { ...(DATA.stockPriceCache || {}), ...(remote.stockPriceCache || {}) };
+      if (remote.aiApiKey && !DATA.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
+      if (remote.chatHistory && remote.chatHistory.length > (DATA.chatHistory || []).length) DATA.chatHistory = remote.chatHistory;
       if (remote.settings) {
-        DATA.settings.familyName = remote.settings.familyName || DATA.settings.familyName;
-        DATA.settings.monthlyIncome = remote.settings.monthlyIncome || DATA.settings.monthlyIncome;
+        DATA.settings.familyName = DATA.settings.familyName || remote.settings.familyName;
+        DATA.settings.monthlyIncome = DATA.settings.monthlyIncome || remote.settings.monthlyIncome;
+        DATA.settings.persons = (DATA.settings.persons && DATA.settings.persons.length) ? DATA.settings.persons : (remote.settings.persons || []);
       }
       localStorage.setItem('wealth_data', JSON.stringify(DATA));
       renderAll();
-      // Update API key input if on AI panel
       const keyInput = document.getElementById('aiApiKey');
       if (keyInput && DATA.aiApiKey) keyInput.value = DATA.aiApiKey;
     }
@@ -1151,23 +1159,25 @@ async function connectFamily(code) {
       }, (payload) => {
         if (payload.new && payload.new.data) {
           const remote = payload.new.data;
-          DATA.transactions = remote.transactions || [];
-          DATA.savings = remote.savings || [];
-          DATA.investments = remote.investments || [];
-          DATA.realEstates = remote.realEstates || [];
-          DATA.brokerageAccounts = remote.brokerageAccounts || [];
-          DATA.realizedPnL = remote.realizedPnL || [];
-          DATA.stockOrders = remote.stockOrders || [];
-          DATA.stockPriceCache = remote.stockPriceCache || {};
-          if (remote.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
-          if (remote.chatHistory) {
+          // MERGE to preserve any local records the other device hasn't seen yet
+          DATA.transactions = mergeById(DATA.transactions || [], remote.transactions || []);
+          DATA.savings = mergeById(DATA.savings || [], remote.savings || []);
+          DATA.investments = mergeById(DATA.investments || [], remote.investments || []);
+          DATA.realEstates = mergeById(DATA.realEstates || [], remote.realEstates || []);
+          DATA.brokerageAccounts = mergeById(DATA.brokerageAccounts || [], remote.brokerageAccounts || []);
+          DATA.realizedPnL = mergeById(DATA.realizedPnL || [], remote.realizedPnL || []);
+          DATA.stockOrders = mergeById(DATA.stockOrders || [], remote.stockOrders || []);
+          DATA.stockPriceCache = { ...(DATA.stockPriceCache || {}), ...(remote.stockPriceCache || {}) };
+          if (remote.aiApiKey && !DATA.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
+          if (remote.chatHistory && remote.chatHistory.length > (DATA.chatHistory || []).length) {
             DATA.chatHistory = remote.chatHistory;
             chatHistory = DATA.chatHistory;
             renderChat();
           }
           if (remote.settings) {
-            DATA.settings.familyName = remote.settings.familyName || DATA.settings.familyName;
-            DATA.settings.monthlyIncome = remote.settings.monthlyIncome || DATA.settings.monthlyIncome;
+            DATA.settings.familyName = DATA.settings.familyName || remote.settings.familyName;
+            DATA.settings.monthlyIncome = DATA.settings.monthlyIncome || remote.settings.monthlyIncome;
+            if (!DATA.settings.persons || !DATA.settings.persons.length) DATA.settings.persons = remote.settings.persons || [];
           }
           localStorage.setItem('wealth_data', JSON.stringify(DATA));
           renderAll();
