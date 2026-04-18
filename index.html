@@ -65,32 +65,38 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-we
 
 /* KPI strip */
 .kpi-strip{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
-.kpi{background:var(--bg2);border:1px solid rgba(0,0,0,.06);border-radius:var(--radius);padding:16px;text-align:center}
-.kpi-label{font-size:.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
-.kpi-value{font-family:var(--font-num);font-size:1.65rem;font-weight:600;color:var(--text)}
+.kpi{background:var(--bg2);border:1px solid rgba(0,0,0,.06);border-radius:var(--radius);padding:18px;text-align:center}
+.kpi.hero{background:linear-gradient(135deg,var(--gold-glow),var(--bg2));border:2px solid var(--gold);padding:22px}
+.kpi-label{font-size:.8rem;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-weight:500}
+.kpi.hero .kpi-label{color:var(--gold);font-weight:600;font-size:.88rem}
+.kpi-value{font-family:var(--font-num);font-size:1.8rem;font-weight:600;color:var(--text)}
+.kpi.hero .kpi-value{font-size:2.4rem}
 .kpi-value.green{color:var(--green)}
 .kpi-value.red{color:var(--red)}
+.kpi-sub{font-size:.75rem;color:var(--text3);margin-top:4px;font-weight:400}
 
 /* Chart */
-.chart-container{position:relative;height:200px;display:flex;align-items:flex-end;gap:3px;padding:20px 4px 30px;overflow-x:auto;cursor:pointer}
-.chart-bar-group{flex:0 0 auto;min-width:30px;display:flex;flex-direction:column;align-items:center;gap:4px}
-.chart-bar-group.active{background:var(--gold-dim);border-radius:6px}
-.chart-bars{display:flex;gap:2px;align-items:flex-end;height:140px;width:100%;padding:0 2px}
-.chart-bar{flex:1;border-radius:4px 4px 0 0;min-height:2px;transition:height .5s ease,opacity .2s}
+.chart-container{position:relative;height:220px;display:flex;align-items:flex-end;gap:4px;padding:16px 4px 10px;overflow-x:auto;cursor:pointer}
+.chart-bar-group{flex:0 0 auto;min-width:42px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 2px;border-radius:6px;position:relative}
+.chart-bar-group.active .chart-label{color:var(--gold);font-weight:600}
+.chart-bar-group.active::after{content:'';position:absolute;bottom:-2px;left:20%;right:20%;height:3px;background:var(--gold);border-radius:2px}
+.chart-bars{display:flex;gap:3px;align-items:flex-end;height:160px;width:100%;padding:0 2px}
+.chart-bar{flex:1;border-radius:3px 3px 0 0;min-height:2px;transition:height .5s ease,opacity .2s}
 .chart-bar:hover{opacity:.7}
 .chart-bar.income{background:var(--green)}
 .chart-bar.expense{background:var(--red)}
-.chart-label{font-size:.68rem;color:var(--text3);text-align:center}
-.chart-tooltip{display:none;background:var(--bg2);border:1px solid var(--gold);border-radius:var(--radius-sm);padding:10px 14px;margin-top:10px;font-size:.82rem;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.chart-label{font-size:.78rem;color:var(--text2);text-align:center;font-family:var(--font-body);font-weight:400}
+.chart-tooltip{display:none;background:var(--bg2);border:1px solid var(--gold);border-radius:var(--radius-sm);padding:12px 16px;margin-top:12px;font-size:.9rem;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .chart-tooltip.show{display:block;animation:fadeUp .25s ease}
-.chart-tooltip-title{font-family:var(--font-num);font-size:1rem;font-weight:600;color:var(--gold);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--bg3)}
-.chart-tooltip-section{margin-bottom:8px}
-.chart-tooltip-section-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.chart-tooltip-title{font-family:var(--font-num);font-size:1.1rem;font-weight:600;color:var(--gold);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bg3)}
+.chart-tooltip-section{margin-bottom:10px}
+.chart-tooltip-section-label{font-size:.78rem;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;font-weight:500}
 .chart-tooltip-section.inc .chart-tooltip-section-label{color:var(--green)}
 .chart-tooltip-section.exp .chart-tooltip-section-label{color:var(--red)}
-.chart-tooltip-row{display:flex;justify-content:space-between;padding:2px 0;font-size:.78rem;color:var(--text2)}
-.chart-tooltip-row b{font-family:var(--font-num);color:var(--text)}
-.chart-tooltip-total{display:flex;justify-content:space-between;padding-top:6px;margin-top:6px;border-top:1px solid var(--bg3);font-weight:600;font-size:.85rem}
+.chart-tooltip-row{display:flex;justify-content:space-between;padding:3px 0;font-size:.88rem;color:var(--text2)}
+.chart-tooltip-row b{font-family:var(--font-num);color:var(--text);font-size:.92rem}
+.chart-tooltip-total{display:flex;justify-content:space-between;padding-top:8px;margin-top:8px;border-top:2px solid var(--gold);font-weight:600;font-size:1rem}
+.chart-tooltip-total b{font-family:var(--font-num);font-size:1.1rem}
 
 /* Budget bars */
 .budget-bar-wrap{margin-bottom:14px}
@@ -2024,7 +2030,11 @@ function renderKPI() {
   const cashSign = cashFund >= 0 ? '' : '-';
 
   document.getElementById('kpiStrip').innerHTML = `
-    <div class="kpi" style="grid-column:span 2"><div class="kpi-label">Quỹ tiền mặt hiện có</div><div class="kpi-value ${cashColor}">${cashSign}${smartFormat(Math.abs(cashFund))}</div><div style="font-size:.68rem;color:var(--text3);margin-top:2px">Tổng thu ${smartFormat(allIncome)} − Tổng chi ${smartFormat(allExpense)}</div></div>
+    <div class="kpi hero" style="grid-column:span 2">
+      <div class="kpi-label">Quỹ tiền mặt hiện có</div>
+      <div class="kpi-value ${cashColor}">${cashSign}${smartFormat(Math.abs(cashFund))}</div>
+      <div class="kpi-sub">Thu ${smartFormat(allIncome)} − Chi ${smartFormat(allExpense)}</div>
+    </div>
     <div class="kpi"><div class="kpi-label">Thu nhập tháng</div><div class="kpi-value green">${smartFormat(totals.income)}</div></div>
     <div class="kpi"><div class="kpi-label">Chi tiêu tháng</div><div class="kpi-value red">${smartFormat(totals.expense)}</div></div>
   `;
@@ -2099,8 +2109,17 @@ function renderCashflow() {
   // Scroll to latest month
   setTimeout(() => { container.scrollLeft = container.scrollWidth; }, 50);
 
-  // Auto-show breakdown for current month
-  showMonthBreakdown(currentMonthKey());
+  // Auto-show breakdown: pick current month if has data, else latest month with data
+  const curMk = currentMonthKey();
+  const curIdx = months.indexOf(curMk);
+  let targetMk = curMk;
+  if (curIdx >= 0 && data[curIdx].income === 0 && data[curIdx].expense === 0) {
+    // Find latest month with data
+    for (let i = months.length - 1; i >= 0; i--) {
+      if (data[i].income > 0 || data[i].expense > 0) { targetMk = months[i]; break; }
+    }
+  }
+  showMonthBreakdown(targetMk);
 }
 
 function showMonthBreakdown(mk) {
