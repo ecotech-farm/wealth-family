@@ -2027,8 +2027,8 @@ function calcCashFund() {
 
 function calcTotalAssets() {
   let total = 0;
-  // Quỹ tiền mặt (cash ròng từ giao dịch)
-  total += calcCashFund();
+  // KHÔNG cộng cash fund ở đây để tránh double-count với data cũ
+  // Cash fund đã hiển thị riêng ở KPI Tổng quan
   // Tiết kiệm: gốc + lãi tích lũy
   DATA.savings.forEach(s => { total += s.amount + calcAccruedInterest(s); });
   // Đầu tư (tài sản khác): giá thị trường hiện tại
@@ -2047,9 +2047,7 @@ function calcTotalAssets() {
 
 function calcAssetAllocation() {
   const alloc = {};
-  // Quỹ tiền mặt
-  const cashF = calcCashFund();
-  if (cashF > 0) alloc['cash'] = { name: 'Tiền mặt', amount: cashF, color: 'var(--gold)', colorDim: 'var(--gold-dim)' };
+  // KHÔNG thêm cash fund vào allocation (tránh double-count với data cũ)
   // Tiết kiệm
   let savTotal = 0;
   DATA.savings.forEach(s => { savTotal += s.amount + calcAccruedInterest(s); });
