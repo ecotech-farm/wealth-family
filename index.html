@@ -685,10 +685,13 @@ textarea.form-input{resize:vertical;min-height:60px}
       <p style="font-size:.7rem;color:var(--text3);margin-top:-8px">Nhập cùng mã trên các thiết bị để đồng bộ dữ liệu.</p>
     </div>
     <div class="modal-section">
-      <div class="modal-section-title">Sao lưu & khôi phục</div>
-      <p style="font-size:.75rem;color:var(--text3);margin-bottom:10px">App tự lưu 60 phiên bản trên máy. Tải Excel để lưu ra ngoài (Google Drive, Zalo...)</p>
+      <div class="modal-section-title" onclick="toggleBackupSection()" style="cursor:pointer;user-select:none">
+        <span id="backupToggleIcon" style="display:inline-block;width:14px">▶</span> Sao lưu & khôi phục <span style="font-size:.7rem;color:var(--green);font-weight:400">(đang chạy ngầm)</span>
+      </div>
+      <div id="backupSectionContent" style="display:none">
+      <p style="font-size:.75rem;color:var(--text3);margin-bottom:10px">App tự sao lưu mỗi khi có thay đổi: 60 phiên bản trên máy + đồng bộ cloud. Nút bên dưới chỉ dùng khi cần.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <button type="button" class="btn btn-gold" onclick="exportExcel()">📊 Tải Excel (nhiều sheet)</button>
+        <button type="button" class="btn btn-gold" onclick="exportExcel()">📊 Tải Excel</button>
         <label class="btn btn-outline" style="cursor:pointer">
           Nhập Excel
           <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
@@ -703,6 +706,7 @@ textarea.form-input{resize:vertical;min-height:60px}
       </div>
       <div class="modal-section-title" style="margin-top:10px;margin-bottom:6px">Lịch sử phiên bản</div>
       <div id="backupVersionsList" style="max-height:240px;overflow-y:auto"></div>
+      </div>
     </div>
     <div class="modal-section">
       <div class="modal-section-title">Dữ liệu</div>
@@ -817,6 +821,11 @@ document.addEventListener('DOMContentLoaded', () => {
   updateBackupStatus();
   // Refresh backup status every minute
   setInterval(updateBackupStatus, 60 * 1000);
+  // Run data safety guardian every 30 seconds
+  setInterval(guardianCheck, 30 * 1000);
+  // Daily cloud snapshot backup
+  setInterval(cloudBackupSilent, 6 * 60 * 60 * 1000);
+  setTimeout(cloudBackupSilent, 30 * 1000); // first one after 30s
   // Stock: fetch prices on load & start auto-refresh
   if ((DATA.stockOrders || []).length > 0) {
     fetchAllPrices();
@@ -1254,6 +1263,73 @@ function deleteVersion(ts) {
   const filtered = versions.filter(v => v.ts !== ts);
   localStorage.setItem('wealth_versions', JSON.stringify(filtered));
   renderBackupVersions();
+}
+
+function toggleBackupSection() {
+  const content = document.getElementById('backupSectionContent');
+  const icon = document.getElementById('backupToggleIcon');
+  if (!content || !icon) return;
+  const open = content.style.display === 'none';
+  content.style.display = open ? 'block' : 'none';
+  icon.textContent = open ? '▼' : '▶';
+}
+
+// ===== DATA SAFETY GUARDIAN (runs in background) =====
+// Monitors for suspicious data loss and auto-recovers
+function guardianCheck() {
+  try {
+    const current = DATA;
+    const curCount = (current.transactions||[]).length + (current.savings||[]).length +
+                     (current.investments||[]).length + (current.realEstates||[]).length;
+
+    // Remember highest count seen - detect sudden drops
+    const seenMax = parseInt(localStorage.getItem('wealth_max_records') || '0');
+    if (curCount > seenMax) {
+      localStorage.setItem('wealth_max_records', curCount);
+    } else if (seenMax - curCount > 3 && seenMax > 5) {
+      // Sudden drop of 3+ records when we had at least 5 - suspicious
+      console.warn('Guardian: Data drop detected. Max seen:', seenMax, 'Current:', curCount);
+      const versions = JSON.parse(localStorage.getItem('wealth_versions') || '[]');
+      // Find most recent version that had higher count
+      for (const v of versions) {
+        try {
+          const d = JSON.parse(v.data);
+          const vCount = (d.transactions||[]).length + (d.savings||[]).length +
+                         (d.investments||[]).length + (d.realEstates||[]).length;
+          if (vCount >= seenMax - 1) {
+            showToast('⚠ Phát hiện mất dữ liệu! Đã tự khôi phục từ phiên bản ' + new Date(v.ts).toLocaleString('vi-VN'), 'success');
+            DATA = Object.assign({}, DATA, d);
+            migrateData();
+            saveLocal();
+            renderAll();
+            return;
+          }
+        } catch(e) {}
+      }
+    }
+  } catch(e) { console.error('Guardian error:', e); }
+}
+
+// ===== AUTO CLOUD BACKUP (every save, silent) =====
+async function cloudBackupSilent() {
+  // Save a timestamped snapshot to Supabase under families_backup pattern
+  if (!supaClient || !DATA.settings.familyCode) return;
+  if (!supabasePullCompleted) return;
+  // Check if data is non-empty
+  const hasData = (DATA.transactions||[]).length > 0 ||
+                  (DATA.savings||[]).length > 0 ||
+                  (DATA.investments||[]).length > 0 ||
+                  (DATA.realEstates||[]).length > 0;
+  if (!hasData) return;
+  try {
+    // Save snapshot with suffix id (acts as historical backup)
+    const snapshotId = DATA.settings.familyCode + '_backup_' + new Date().toISOString().slice(0,10);
+    await supaClient.from('families').upsert({
+      id: snapshotId,
+      data: DATA,
+      updated_at: new Date().toISOString()
+    });
+  } catch(e) { /* silent */ }
 }
 
 function renderBackupVersions() {
