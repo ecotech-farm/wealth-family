@@ -6,6 +6,7 @@
 <title>WEALTH — Tài Chính Gia Đình Thông Minh</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -679,11 +680,18 @@ textarea.form-input{resize:vertical;min-height:60px}
     </div>
     <div class="modal-section">
       <div class="modal-section-title">Sao lưu & khôi phục</div>
-      <p style="font-size:.75rem;color:var(--text3);margin-bottom:10px">Tự động giữ 30 phiên bản gần nhất. Mỗi 20 lần lưu sẽ tự tải file backup về máy.</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <button type="button" class="btn btn-gold" onclick="manualBackupDownload()">Tải file backup ngay</button>
+      <p style="font-size:.75rem;color:var(--text3);margin-bottom:10px">App tự lưu 60 phiên bản trên máy. Tải Excel để lưu ra ngoài (Google Drive, Zalo...)</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <button type="button" class="btn btn-gold" onclick="exportExcel()">📊 Tải Excel (nhiều sheet)</button>
         <label class="btn btn-outline" style="cursor:pointer">
-          Khôi phục từ file
+          Nhập Excel
+          <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
+        </label>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button type="button" class="btn btn-outline" onclick="manualBackupDownload()">Tải JSON</button>
+        <label class="btn btn-outline" style="cursor:pointer">
+          Khôi phục từ file JSON
           <input type="file" accept=".json" style="display:none" onchange="restoreFromFile(event)">
         </label>
       </div>
@@ -1001,6 +1009,187 @@ function manualBackupDownload() {
     updateBackupStatus();
     showToast('Đã tải file backup', 'success');
   } catch(e) { showToast('Lỗi tạo backup: ' + e.message, 'error'); }
+}
+
+// ===== EXCEL EXPORT / IMPORT =====
+function exportExcel() {
+  if (typeof XLSX === 'undefined') { showToast('Đang tải thư viện Excel...', 'error'); return; }
+  try {
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Giao dịch
+    const txData = (DATA.transactions || []).map(t => ({
+      ID: t.id, Ngày: t.date, Loại: t.type === 'income' ? 'Thu' : 'Chi',
+      Nhóm: getCatById(t.category)?.name || t.category,
+      'Mô tả': t.desc || '', 'Số tiền': t.amount,
+      'Người chi': t.person || ''
+    }));
+    const txSheet = XLSX.utils.json_to_sheet(txData.length ? txData : [{ID:'',Ngày:'',Loại:'',Nhóm:'','Mô tả':'','Số tiền':'','Người chi':''}]);
+    XLSX.utils.book_append_sheet(wb, txSheet, 'Giao dịch');
+
+    // Sheet 2: Tiết kiệm
+    const savData = (DATA.savings || []).map(s => ({
+      ID: s.id, 'Ngân hàng': s.bank, 'Số tiền gửi': s.amount,
+      'Lãi suất (%/năm)': s.rate, 'Kỳ hạn (tháng)': s.term, 'Ngày gửi': s.startDate
+    }));
+    const savSheet = XLSX.utils.json_to_sheet(savData.length ? savData : [{ID:'','Ngân hàng':'','Số tiền gửi':'','Lãi suất (%/năm)':'','Kỳ hạn (tháng)':'','Ngày gửi':''}]);
+    XLSX.utils.book_append_sheet(wb, savSheet, 'Tiết kiệm');
+
+    // Sheet 3: Đầu tư
+    const invData = (DATA.investments || []).map(i => ({
+      ID: i.id, 'Tên tài sản': i.name,
+      'Loại': getInvTypeById(i.type)?.name || i.type,
+      'Số lượng': i.qty, 'Đơn vị': i.unit || '',
+      'Giá mua/ĐV': i.buyPrice, 'Giá hiện tại/ĐV': i.currentPrice,
+      'Vốn': i.capital, 'Giá trị hiện tại': i.currentValue,
+      'Lãi/Lỗ': (i.currentValue || 0) - (i.capital || 0),
+      'Ngày mua': i.date
+    }));
+    const invSheet = XLSX.utils.json_to_sheet(invData.length ? invData : [{ID:'','Tên tài sản':'','Loại':'','Số lượng':'','Đơn vị':'','Giá mua/ĐV':'','Giá hiện tại/ĐV':'','Vốn':'','Giá trị hiện tại':'','Lãi/Lỗ':'','Ngày mua':''}]);
+    XLSX.utils.book_append_sheet(wb, invSheet, 'Đầu tư');
+
+    // Sheet 4: BĐS
+    const reData = [];
+    (DATA.realEstates || []).forEach(r => {
+      const paid = (r.payments || []).reduce((s, p) => s + p.amount, 0);
+      reData.push({ ID: r.id, Tên: r.name, 'Tổng HĐ': r.totalValue, 'Giá trị hiện tại': r.currentValue, 'Đã thanh toán': paid, 'Ghi chú': r.note || '', 'Ngày mua': r.date });
+      (r.payments || []).forEach(p => reData.push({ ID: 'pmt:' + r.id + ':' + p.id, Tên: '  └ ' + (p.note || 'Đợt'), 'Tổng HĐ': '', 'Giá trị hiện tại': '', 'Đã thanh toán': p.amount, 'Ghi chú': '', 'Ngày mua': p.date }));
+    });
+    const reSheet = XLSX.utils.json_to_sheet(reData.length ? reData : [{ID:'',Tên:'','Tổng HĐ':'','Giá trị hiện tại':'','Đã thanh toán':'','Ghi chú':'','Ngày mua':''}]);
+    XLSX.utils.book_append_sheet(wb, reSheet, 'BĐS');
+
+    // Sheet 5: Tài khoản CK
+    const brkData = (DATA.brokerageAccounts || []).map(b => ({ ID: b.id, 'Tên TKCK': b.name, 'Số dư': b.cashBalance || 0 }));
+    const brkSheet = XLSX.utils.json_to_sheet(brkData.length ? brkData : [{ID:'','Tên TKCK':'','Số dư':''}]);
+    XLSX.utils.book_append_sheet(wb, brkSheet, 'TKCK');
+
+    // Sheet 6: Chốt lời/lỗ
+    const rData = (DATA.realizedPnL || []).map(r => ({
+      ID: r.id, 'Tên': r.name, 'Loại': getInvTypeById(r.type)?.name || r.type,
+      'Số lượng': r.qty, 'Giá mua': r.buyPrice, 'Giá bán': r.sellPrice,
+      'Vốn': r.capital, 'Tiền bán': r.proceeds, 'Lãi/Lỗ': r.pnl,
+      'Ngày chốt': new Date(r.closedAt).toISOString().slice(0,10)
+    }));
+    const rSheet = XLSX.utils.json_to_sheet(rData.length ? rData : [{ID:'','Tên':'','Loại':'','Số lượng':'','Giá mua':'','Giá bán':'','Vốn':'','Tiền bán':'','Lãi/Lỗ':'','Ngày chốt':''}]);
+    XLSX.utils.book_append_sheet(wb, rSheet, 'Chốt lời-lỗ');
+
+    // Sheet 7: Tổng hợp
+    const cashIn = (DATA.transactions||[]).filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const cashOut = (DATA.transactions||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const savTotal = (DATA.savings||[]).reduce((s,i)=>s+i.amount,0);
+    const invTotal = (DATA.investments||[]).reduce((s,i)=>s+(i.currentValue||0),0);
+    const reTotal = (DATA.realEstates||[]).reduce((s,r)=>s+(r.payments||[]).reduce((ss,p)=>ss+p.amount,0),0);
+    const brkTotal = (DATA.brokerageAccounts||[]).reduce((s,b)=>s+(b.cashBalance||0),0);
+    const summary = [
+      { Mục: 'Quỹ tiền mặt (thu - chi)', 'Giá trị': cashIn - cashOut },
+      { Mục: 'Tổng tiết kiệm', 'Giá trị': savTotal },
+      { Mục: 'Tổng đầu tư', 'Giá trị': invTotal },
+      { Mục: 'Tổng BĐS (đã chi)', 'Giá trị': reTotal },
+      { Mục: 'Tiền mặt TKCK', 'Giá trị': brkTotal },
+      { Mục: 'TỔNG TÀI SẢN', 'Giá trị': savTotal + invTotal + reTotal + brkTotal },
+    ];
+    const sumSheet = XLSX.utils.json_to_sheet(summary);
+    XLSX.utils.book_append_sheet(wb, sumSheet, 'Tổng hợp');
+
+    const ts = new Date().toISOString().slice(0,16).replace(':','-');
+    XLSX.writeFile(wb, `wealth-${ts}.xlsx`);
+    localStorage.setItem('wealth_last_download', Date.now());
+    updateBackupStatus();
+    showToast('Đã tải file Excel', 'success');
+  } catch(e) { showToast('Lỗi tạo Excel: ' + e.message, 'error'); console.error(e); }
+}
+
+function importExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!confirm('Nhập Excel sẽ GỘP dữ liệu vào. Dữ liệu cũ không bị mất. Tiếp tục?')) {
+    event.target.value = ''; return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      let imported = 0;
+
+      // Backup current state first
+      const versions = JSON.parse(localStorage.getItem('wealth_versions') || '[]');
+      versions.unshift({ ts: Date.now(), data: JSON.stringify(DATA), note: 'Trước khi nhập Excel' });
+      localStorage.setItem('wealth_versions', JSON.stringify(versions.slice(0, 30)));
+
+      // Parse Giao dịch
+      if (wb.Sheets['Giao dịch']) {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets['Giao dịch']);
+        rows.forEach(r => {
+          if (!r['Số tiền']) return;
+          const type = (r['Loại'] || '').toLowerCase().includes('thu') ? 'income' : 'expense';
+          const catName = r['Nhóm'] || '';
+          const cat = CATEGORIES.find(c => c.name === catName) || { id: 'essential' };
+          const tx = {
+            id: r.ID || uid(),
+            type, category: type === 'income' ? 'income' : cat.id,
+            desc: r['Mô tả'] || '', amount: parseInt(r['Số tiền']) || 0,
+            date: typeof r['Ngày'] === 'string' ? r['Ngày'] : new Date(r['Ngày']).toISOString().slice(0,10),
+            person: r['Người chi'] || ''
+          };
+          if (!DATA.transactions.find(t => t.id === tx.id)) { DATA.transactions.push(tx); imported++; }
+        });
+      }
+
+      // Parse Tiết kiệm
+      if (wb.Sheets['Tiết kiệm']) {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets['Tiết kiệm']);
+        rows.forEach(r => {
+          if (!r['Số tiền gửi']) return;
+          const sv = {
+            id: r.ID || uid(), bank: r['Ngân hàng'] || '',
+            amount: parseInt(r['Số tiền gửi']) || 0,
+            rate: parseFloat(r['Lãi suất (%/năm)']) || 0,
+            term: parseInt(r['Kỳ hạn (tháng)']) || 12,
+            startDate: typeof r['Ngày gửi'] === 'string' ? r['Ngày gửi'] : new Date(r['Ngày gửi']).toISOString().slice(0,10)
+          };
+          if (!DATA.savings.find(s => s.id === sv.id)) { DATA.savings.push(sv); imported++; }
+        });
+      }
+
+      // Parse Đầu tư
+      if (wb.Sheets['Đầu tư']) {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets['Đầu tư']);
+        rows.forEach(r => {
+          if (!r['Tên tài sản']) return;
+          const typeName = r['Loại'] || '';
+          const type = INV_TYPES.find(t => t.name === typeName)?.id || 'stock';
+          const qty = parseFloat(r['Số lượng']) || 0;
+          const buyPrice = parseInt(r['Giá mua/ĐV']) || 0;
+          const currentPrice = parseInt(r['Giá hiện tại/ĐV']) || 0;
+          const inv = {
+            id: r.ID || uid(), name: r['Tên tài sản'], type,
+            qty, unit: r['Đơn vị'] || '',
+            buyPrice, currentPrice,
+            capital: parseInt(r['Vốn']) || Math.round(qty * buyPrice),
+            currentValue: parseInt(r['Giá trị hiện tại']) || Math.round(qty * currentPrice),
+            date: typeof r['Ngày mua'] === 'string' ? r['Ngày mua'] : new Date(r['Ngày mua']).toISOString().slice(0,10)
+          };
+          if (!DATA.investments.find(i => i.id === inv.id)) { DATA.investments.push(inv); imported++; }
+        });
+      }
+
+      // Parse TKCK
+      if (wb.Sheets['TKCK']) {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets['TKCK']);
+        rows.forEach(r => {
+          if (!r['Tên TKCK']) return;
+          const brk = { id: r.ID || uid(), name: r['Tên TKCK'], cashBalance: parseInt(r['Số dư']) || 0 };
+          if (!DATA.brokerageAccounts.find(b => b.id === brk.id)) { DATA.brokerageAccounts.push(brk); imported++; }
+        });
+      }
+
+      saveLocal();
+      renderAll();
+      showToast('Đã nhập ' + imported + ' bản ghi từ Excel', 'success');
+    } catch(err) { showToast('Lỗi đọc Excel: ' + err.message, 'error'); console.error(err); }
+  };
+  reader.readAsArrayBuffer(file);
+  event.target.value = '';
 }
 
 function restoreFromFile(event) {
