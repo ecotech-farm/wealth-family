@@ -71,13 +71,25 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-we
 .kpi-value.red{color:var(--red)}
 
 /* Chart */
-.chart-container{position:relative;height:200px;display:flex;align-items:flex-end;gap:8px;padding:20px 10px 30px}
-.chart-bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
-.chart-bars{display:flex;gap:3px;align-items:flex-end;height:140px;width:100%}
-.chart-bar{flex:1;border-radius:4px 4px 0 0;min-height:2px;transition:height .5s ease}
+.chart-container{position:relative;height:200px;display:flex;align-items:flex-end;gap:3px;padding:20px 4px 30px;overflow-x:auto;cursor:pointer}
+.chart-bar-group{flex:0 0 auto;min-width:30px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.chart-bar-group.active{background:var(--gold-dim);border-radius:6px}
+.chart-bars{display:flex;gap:2px;align-items:flex-end;height:140px;width:100%;padding:0 2px}
+.chart-bar{flex:1;border-radius:4px 4px 0 0;min-height:2px;transition:height .5s ease,opacity .2s}
+.chart-bar:hover{opacity:.7}
 .chart-bar.income{background:var(--green)}
 .chart-bar.expense{background:var(--red)}
-.chart-label{font-size:.6rem;color:var(--text3);text-align:center}
+.chart-label{font-size:.68rem;color:var(--text3);text-align:center}
+.chart-tooltip{display:none;background:var(--bg2);border:1px solid var(--gold);border-radius:var(--radius-sm);padding:10px 14px;margin-top:10px;font-size:.82rem;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.chart-tooltip.show{display:block;animation:fadeUp .25s ease}
+.chart-tooltip-title{font-family:var(--font-num);font-size:1rem;font-weight:600;color:var(--gold);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--bg3)}
+.chart-tooltip-section{margin-bottom:8px}
+.chart-tooltip-section-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.chart-tooltip-section.inc .chart-tooltip-section-label{color:var(--green)}
+.chart-tooltip-section.exp .chart-tooltip-section-label{color:var(--red)}
+.chart-tooltip-row{display:flex;justify-content:space-between;padding:2px 0;font-size:.78rem;color:var(--text2)}
+.chart-tooltip-row b{font-family:var(--font-num);color:var(--text)}
+.chart-tooltip-total{display:flex;justify-content:space-between;padding-top:6px;margin-top:6px;border-top:1px solid var(--bg3);font-weight:600;font-size:.85rem}
 
 /* Budget bars */
 .budget-bar-wrap{margin-bottom:14px}
@@ -336,8 +348,9 @@ textarea.form-input{resize:vertical;min-height:60px}
     <div class="kpi-strip" id="kpiStrip"></div>
     <div id="alertBanners"></div>
     <div class="card">
-      <div class="card-title">Dòng tiền 6 tháng</div>
+      <div class="card-title">Dòng tiền 12 tháng</div>
       <div class="chart-container" id="cashflowChart"></div>
+      <div id="cashflowTooltip" class="chart-tooltip"></div>
     </div>
     <div class="card">
       <div class="card-title">Giao dịch gần đây</div>
@@ -1811,15 +1824,20 @@ function renderAssetSummary() {
 function renderKPI() {
   const mk = currentMonthKey();
   const totals = getMonthTotals(mk);
-  const income = getMonthlyIncome() || totals.income;
-  const remaining = income - totals.expense;
-  const remColor = remaining >= 0 ? 'green' : 'red';
-  const remSign = remaining >= 0 ? '+' : '-';
+  // Quỹ tiền mặt = tổng thu - tổng chi TẤT CẢ THỜI GIAN (từ giao dịch)
+  let allIncome = 0, allExpense = 0;
+  (DATA.transactions || []).forEach(t => {
+    if (t.type === 'income') allIncome += t.amount;
+    else allExpense += t.amount;
+  });
+  const cashFund = allIncome - allExpense;
+  const cashColor = cashFund >= 0 ? 'green' : 'red';
+  const cashSign = cashFund >= 0 ? '' : '-';
 
   document.getElementById('kpiStrip').innerHTML = `
-    <div class="kpi"><div class="kpi-label">Thu nhập tháng</div><div class="kpi-value green">${smartFormat(income)}</div></div>
+    <div class="kpi" style="grid-column:span 2"><div class="kpi-label">Quỹ tiền mặt hiện có</div><div class="kpi-value ${cashColor}">${cashSign}${smartFormat(Math.abs(cashFund))}</div><div style="font-size:.68rem;color:var(--text3);margin-top:2px">Tổng thu ${smartFormat(allIncome)} − Tổng chi ${smartFormat(allExpense)}</div></div>
+    <div class="kpi"><div class="kpi-label">Thu nhập tháng</div><div class="kpi-value green">${smartFormat(totals.income)}</div></div>
     <div class="kpi"><div class="kpi-label">Chi tiêu tháng</div><div class="kpi-value red">${smartFormat(totals.expense)}</div></div>
-    <div class="kpi" style="grid-column:span 2"><div class="kpi-label">Còn lại tháng này</div><div class="kpi-value ${remColor}">${remSign}${smartFormat(Math.abs(remaining))}</div></div>
   `;
 }
 
@@ -1851,9 +1869,10 @@ function renderAlerts() {
 // ===== CASHFLOW CHART =====
 function renderCashflow() {
   const container = document.getElementById('cashflowChart');
+  const tooltip = document.getElementById('cashflowTooltip');
   const now = new Date();
   const months = [];
-  for (let i = 5; i >= 0; i--) {
+  for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     months.push(getMonthKey(d));
   }
@@ -1865,10 +1884,10 @@ function renderCashflow() {
     return t;
   });
 
-  // UX: ẩn biểu đồ nếu chưa đủ 2 tháng có data
   const monthsWithData = data.filter(d => d.income > 0 || d.expense > 0).length;
-  if (monthsWithData < 2) {
-    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:.82rem;text-align:center;padding:20px">Cần ít nhất 2 tháng dữ liệu để hiển thị xu hướng</div>';
+  if (monthsWithData < 1) {
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:.82rem;text-align:center;padding:20px">Chưa có giao dịch nào để hiển thị</div>';
+    if (tooltip) tooltip.classList.remove('show');
     return;
   }
 
@@ -1876,16 +1895,82 @@ function renderCashflow() {
 
   container.innerHTML = months.map((mk, i) => {
     const mIdx = parseInt(mk.split('-')[1]) - 1;
+    const yr = mk.split('-')[0].slice(-2);
     const incH = Math.max(2, (data[i].income / maxVal) * 130);
     const expH = Math.max(2, (data[i].expense / maxVal) * 130);
-    return `<div class="chart-bar-group">
+    return `<div class="chart-bar-group" data-mk="${mk}" onclick="showMonthBreakdown('${mk}')">
       <div class="chart-bars">
-        <div class="chart-bar income" style="height:${incH}px" title="Thu: ${formatMoney(data[i].income)}"></div>
-        <div class="chart-bar expense" style="height:${expH}px" title="Chi: ${formatMoney(data[i].expense)}"></div>
+        <div class="chart-bar income" style="height:${incH}px"></div>
+        <div class="chart-bar expense" style="height:${expH}px"></div>
       </div>
-      <div class="chart-label">${monthLabels[mIdx]}</div>
+      <div class="chart-label">${monthLabels[mIdx]}/${yr}</div>
     </div>`;
   }).join('');
+
+  // Scroll to latest month
+  setTimeout(() => { container.scrollLeft = container.scrollWidth; }, 50);
+
+  // Auto-show breakdown for current month
+  showMonthBreakdown(currentMonthKey());
+}
+
+function showMonthBreakdown(mk) {
+  const tooltip = document.getElementById('cashflowTooltip');
+  if (!tooltip) return;
+  // Highlight selected bar group
+  document.querySelectorAll('.chart-bar-group').forEach(g => {
+    g.classList.toggle('active', g.dataset.mk === mk);
+  });
+
+  const txs = getMonthTransactions(mk);
+  if (!txs.length) {
+    tooltip.classList.remove('show');
+    return;
+  }
+
+  const [y, m] = mk.split('-');
+  const titleLabel = `Tháng ${parseInt(m)}/${y}`;
+
+  // Group income by description
+  const incomeBy = {};
+  const expenseByCat = {};
+  let totalInc = 0, totalExp = 0;
+  txs.forEach(t => {
+    if (t.type === 'income') {
+      const key = t.desc || 'Thu nhập khác';
+      incomeBy[key] = (incomeBy[key] || 0) + t.amount;
+      totalInc += t.amount;
+    } else {
+      const cat = getCatById(t.category);
+      const key = cat ? cat.name : 'Khác';
+      expenseByCat[key] = (expenseByCat[key] || 0) + t.amount;
+      totalExp += t.amount;
+    }
+  });
+
+  const incomeRows = Object.entries(incomeBy).sort((a,b) => b[1]-a[1])
+    .map(([k,v]) => `<div class="chart-tooltip-row"><span>${k}</span><b>+${formatMoney(v)}</b></div>`).join('');
+  const expenseRows = Object.entries(expenseByCat).sort((a,b) => b[1]-a[1])
+    .map(([k,v]) => `<div class="chart-tooltip-row"><span>${k}</span><b>-${formatMoney(v)}</b></div>`).join('');
+
+  const net = totalInc - totalExp;
+  const netColor = net >= 0 ? 'var(--green)' : 'var(--red)';
+
+  tooltip.innerHTML = `
+    <div class="chart-tooltip-title">${titleLabel} — ${txs.length} giao dịch</div>
+    ${Object.keys(incomeBy).length ? `<div class="chart-tooltip-section inc">
+      <div class="chart-tooltip-section-label">Thu từ</div>
+      ${incomeRows}
+      <div class="chart-tooltip-row" style="padding-top:4px;border-top:1px dashed var(--bg3);margin-top:2px"><span>Tổng thu</span><b style="color:var(--green)">+${formatMoney(totalInc)}</b></div>
+    </div>` : ''}
+    ${Object.keys(expenseByCat).length ? `<div class="chart-tooltip-section exp">
+      <div class="chart-tooltip-section-label">Chi cho</div>
+      ${expenseRows}
+      <div class="chart-tooltip-row" style="padding-top:4px;border-top:1px dashed var(--bg3);margin-top:2px"><span>Tổng chi</span><b style="color:var(--red)">-${formatMoney(totalExp)}</b></div>
+    </div>` : ''}
+    <div class="chart-tooltip-total"><span>Chênh lệch</span><b style="color:${netColor}">${net>=0?'+':''}${formatMoney(net)}</b></div>
+  `;
+  tooltip.classList.add('show');
 }
 
 // ===== RECENT TRANSACTIONS =====
