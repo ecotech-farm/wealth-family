@@ -671,9 +671,18 @@ textarea.form-input{resize:vertical;min-height:60px}
   <!-- ===== AI PANEL ===== -->
   <div class="panel" id="panel-ai">
     <div class="card">
-      <div class="card-title">API Key</div>
+      <div class="card-title">Cài đặt AI</div>
+      <div class="form-group">
+        <label class="form-label">Nhà cung cấp</label>
+        <div class="toggle-group" id="aiProviderToggle">
+          <button type="button" class="toggle-opt" data-provider="gemini">Gemini 2.5 Flash</button>
+          <button type="button" class="toggle-opt" data-provider="claude">Claude Sonnet</button>
+        </div>
+      </div>
       <div class="form-group" style="margin-bottom:0">
-        <input class="form-input" id="aiApiKey" type="password" placeholder="Nhập Claude API key...">
+        <label class="form-label">API Key</label>
+        <input class="form-input" id="aiApiKey" type="password" placeholder="Nhập API key...">
+        <p style="font-size:.72rem;color:var(--text3);margin-top:6px" id="aiKeyHint"></p>
       </div>
     </div>
     <div class="card">
@@ -826,6 +835,7 @@ let DATA = {
   stockOrders: [],
   stockPriceCache: {},
   aiApiKey: '',
+  aiProvider: 'gemini', // 'gemini' (Gemini 2.5 Flash) or 'claude'
   chatHistory: []
 };
 
@@ -1455,6 +1465,7 @@ async function connectFamily(code) {
       DATA.stockOrders = mergeById(DATA.stockOrders || [], remote.stockOrders || []);
       DATA.stockPriceCache = { ...(DATA.stockPriceCache || {}), ...(remote.stockPriceCache || {}) };
       if (remote.aiApiKey && !DATA.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
+      if (remote.aiProvider) DATA.aiProvider = remote.aiProvider;
       if (remote.chatHistory && remote.chatHistory.length > (DATA.chatHistory || []).length) DATA.chatHistory = remote.chatHistory;
       if (remote.settings) {
         DATA.settings.familyName = DATA.settings.familyName || remote.settings.familyName;
@@ -1490,6 +1501,7 @@ async function connectFamily(code) {
           DATA.stockOrders = mergeById(DATA.stockOrders || [], remote.stockOrders || []);
           DATA.stockPriceCache = { ...(DATA.stockPriceCache || {}), ...(remote.stockPriceCache || {}) };
           if (remote.aiApiKey && !DATA.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
+      if (remote.aiProvider) DATA.aiProvider = remote.aiProvider;
           if (remote.chatHistory && remote.chatHistory.length > (DATA.chatHistory || []).length) {
             DATA.chatHistory = remote.chatHistory;
             chatHistory = DATA.chatHistory;
@@ -1554,6 +1566,7 @@ async function syncToSupabase() {
       stockOrders: DATA.stockOrders || [],
       stockPriceCache: DATA.stockPriceCache || {},
       aiApiKey: DATA.aiApiKey,
+      aiProvider: DATA.aiProvider || 'gemini',
       chatHistory: DATA.chatHistory
     };
     await supaClient.from('families').upsert({
@@ -3420,7 +3433,35 @@ function renderRealEstates() {
 }
 
 // ===== AI CHAT =====
+function updateAIProviderUI() {
+  const provider = DATA.aiProvider || 'gemini';
+  document.querySelectorAll('#aiProviderToggle .toggle-opt').forEach(b => {
+    b.classList.toggle('active-income', b.dataset.provider === provider);
+  });
+  const hint = document.getElementById('aiKeyHint');
+  if (hint) {
+    hint.innerHTML = provider === 'gemini'
+      ? 'Lấy key tại <b>aistudio.google.com/apikey</b> (bắt đầu bằng <code>AIza...</code>)'
+      : 'Lấy key tại <b>console.anthropic.com/settings/keys</b> (bắt đầu bằng <code>sk-ant-api03-...</code>)';
+  }
+  const input = document.getElementById('aiApiKey');
+  if (input) input.placeholder = provider === 'gemini' ? 'Nhập Gemini API key (AIza...)' : 'Nhập Claude API key (sk-ant-...)';
+}
+
 function initAIPanel() {
+  // Setup provider toggle if not done
+  document.querySelectorAll('#aiProviderToggle .toggle-opt').forEach(btn => {
+    if (btn.dataset.providerBound) return;
+    btn.dataset.providerBound = '1';
+    btn.addEventListener('click', () => {
+      DATA.aiProvider = btn.dataset.provider;
+      updateAIProviderUI();
+      saveLocal();
+      showToast('Đã chuyển sang ' + (btn.dataset.provider === 'gemini' ? 'Gemini 2.5 Flash' : 'Claude Sonnet'), 'success');
+    });
+  });
+  updateAIProviderUI();
+
   if (chatHistory.length > 0) renderChat();
   // Auto-analyze: trigger 1 lần/session nếu có cảnh báo ngân sách
   if (aiAutoAnalyzed) return;
@@ -3456,6 +3497,86 @@ function escapeHTML(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
 
+// ===== AI PROVIDER ABSTRACTION =====
+// Supports both Gemini 2.5 Flash and Claude Sonnet
+// Returns text content from AI response
+async function callAI({ systemPrompt, userText, images, maxTokens, history }) {
+  const provider = DATA.aiProvider || 'gemini';
+  const apiKey = DATA.aiApiKey;
+  if (!apiKey) throw new Error('Chưa nhập API key');
+
+  if (provider === 'gemini') {
+    // Gemini 2.5 Flash
+    const parts = [];
+    if (userText) parts.push({ text: userText });
+    if (images && images.length) {
+      for (const img of images) {
+        parts.push({ inline_data: { mime_type: img.mimeType, data: img.data } });
+      }
+    }
+    // History for chat (Gemini format)
+    const contents = [];
+    if (history && history.length) {
+      history.forEach(h => {
+        contents.push({
+          role: h.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: h.content }]
+        });
+      });
+    } else {
+      contents.push({ role: 'user', parts });
+    }
+    const body = {
+      contents,
+      generationConfig: { maxOutputTokens: maxTokens || 2048, temperature: 0.7 }
+    };
+    if (systemPrompt) body.systemInstruction = { parts: [{ text: systemPrompt }] };
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const json = await response.json();
+    if (json.error) throw new Error(json.error.message);
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return text;
+  } else {
+    // Claude Sonnet
+    const content = [];
+    if (images && images.length) {
+      for (const img of images) {
+        content.push({ type: 'image', source: { type: 'base64', media_type: img.mimeType, data: img.data } });
+      }
+    }
+    if (userText) content.push({ type: 'text', text: userText });
+
+    const messages = history && history.length
+      ? history.map(m => ({ role: m.role, content: m.content }))
+      : [{ role: 'user', content }];
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: maxTokens || 2048,
+        system: systemPrompt,
+        messages
+      })
+    });
+    const json = await response.json();
+    if (json.error) throw new Error(json.error.message);
+    return json.content?.[0]?.text || '';
+  }
+}
+
 // ===== AI IMAGE PARSER =====
 let aiParsedTxs = []; // Pending transactions parsed from image
 
@@ -3480,19 +3601,14 @@ async function aiParseImage(event) {
   result.innerHTML = '<div style="font-size:.85rem;color:var(--gold);padding:10px 0">🔍 Đang phân tích ảnh...</div>';
 
   try {
-    // Build message content with all images
-    const content = [];
+    // Build images array
+    const images = [];
     for (const f of files) {
       const b64 = await fileToBase64(f);
-      content.push({
-        type: 'image',
-        source: { type: 'base64', media_type: f.type, data: b64 }
-      });
+      images.push({ mimeType: f.type, data: b64 });
     }
     const catsList = CATEGORIES.map(c => `"${c.id}" (${c.name})`).join(', ');
-    content.push({
-      type: 'text',
-      text: `Bạn là AI trợ lý tài chính. Phân tích ảnh (hoá đơn, sao kê ngân hàng, tin nhắn chuyển khoản, ảnh biên lai...) và trích xuất các giao dịch.
+    const prompt = `Bạn là AI trợ lý tài chính. Phân tích ảnh (hoá đơn, sao kê ngân hàng, tin nhắn chuyển khoản, ảnh biên lai...) và trích xuất các giao dịch.
 
 Trả về JSON array thuần, KHÔNG markdown, KHÔNG giải thích. Format:
 [
@@ -3506,27 +3622,16 @@ Quy tắc:
 - Nếu không rõ ngày → dùng "${todayStr()}"
 - desc ngắn gọn (VD: "Mua sắm Coop", "Chuyển khoản", "Nhận lương")
 - Chỉ phân tích các giao dịch thực sự, bỏ qua số dư/tổng/thông tin tài khoản
-- Nếu ảnh không có giao dịch → trả về []`
-    });
+- Nếu ảnh không có giao dịch → trả về []`;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2048,
-        messages: [{ role: 'user', content }]
-      })
-    });
-    const json = await response.json();
-    if (json.error) { result.innerHTML = '<div style="color:var(--red)">Lỗi AI: ' + json.error.message + '</div>'; return; }
-
-    let text = json.content?.[0]?.text || '[]';
+    let text;
+    try {
+      text = await callAI({ userText: prompt, images, maxTokens: 2048 });
+    } catch(err) {
+      result.innerHTML = '<div style="color:var(--red)">Lỗi AI: ' + err.message + '</div>';
+      return;
+    }
+    if (!text) text = '[]';
     // Strip any markdown
     text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
     const match = text.match(/\[[\s\S]*\]/);
@@ -3612,7 +3717,7 @@ async function sendChat() {
   if (!msg) return;
 
   const apiKey = DATA.aiApiKey || document.getElementById('aiApiKey').value.trim();
-  if (!apiKey) { showToast('Vui lòng nhập Claude API key', 'error'); return; }
+  if (!apiKey) { showToast('Vui lòng nhập API key', 'error'); return; }
 
   chatHistory.push({ role: 'user', content: msg });
   input.value = '';
@@ -3655,36 +3760,19 @@ Trả lời ngắn gọn, thực tế, có thể hành động.`;
     chatHistory.push({ role: 'assistant', content: 'Đang suy nghĩ...' });
     renderChat();
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: chatHistory.filter(m => m.content !== 'Đang suy nghĩ...').map(m => ({
-          role: m.role, content: m.content
-        }))
-      })
-    });
+    const history = chatHistory.filter(m => m.content !== 'Đang suy nghĩ...');
+    const text = await callAI({ systemPrompt, history, maxTokens: 1024 });
 
-    const result = await response.json();
     // Remove thinking indicator
     chatHistory.pop();
-
-    if (result.content && result.content[0]) {
-      chatHistory.push({ role: 'assistant', content: result.content[0].text });
-    } else if (result.error) {
-      chatHistory.push({ role: 'assistant', content: 'Lỗi: ' + (result.error.message || 'Không thể kết nối AI') });
+    if (text) {
+      chatHistory.push({ role: 'assistant', content: text });
+    } else {
+      chatHistory.push({ role: 'assistant', content: 'Không nhận được phản hồi từ AI' });
     }
   } catch(e) {
     chatHistory.pop();
-    chatHistory.push({ role: 'assistant', content: 'Lỗi kết nối: ' + e.message });
+    chatHistory.push({ role: 'assistant', content: 'Lỗi: ' + e.message });
   }
   renderChat();
   // Sync chat history
