@@ -676,7 +676,7 @@ textarea.form-input{resize:vertical;min-height:60px}
         <label class="form-label">Nhà cung cấp</label>
         <div class="toggle-group" id="aiProviderToggle">
           <button type="button" class="toggle-opt" data-provider="gemini">Gemini 2.5 Flash</button>
-          <button type="button" class="toggle-opt" data-provider="claude">Claude Sonnet</button>
+          <button type="button" class="toggle-opt" data-provider="claude">Claude Opus 4.5</button>
         </div>
       </div>
       <div class="form-group" style="margin-bottom:0">
@@ -1796,13 +1796,21 @@ function initUI() {
       saveLocal(); renderAll();
       showToast('Đã xóa giao dịch', 'success');
     } else if (action === 'del-sav') {
+      const sav = DATA.savings.find(s => s.id === id);
+      if (sav && sav.linkedTxId) {
+        DATA.transactions = DATA.transactions.filter(t => t.id !== sav.linkedTxId);
+      }
       DATA.savings = DATA.savings.filter(s => s.id !== id);
       saveLocal(); renderAll();
-      showToast('Đã xóa sổ tiết kiệm', 'success');
+      showToast('Đã xóa sổ tiết kiệm (hoàn tiền về quỹ)', 'success');
     } else if (action === 'del-inv') {
+      const inv = DATA.investments.find(i => i.id === id);
+      if (inv && inv.linkedTxId) {
+        DATA.transactions = DATA.transactions.filter(t => t.id !== inv.linkedTxId);
+      }
       DATA.investments = DATA.investments.filter(i => i.id !== id);
       saveLocal(); renderAll();
-      showToast('Đã xóa khoản đầu tư', 'success');
+      showToast('Đã xóa khoản đầu tư (hoàn tiền về quỹ)', 'success');
     } else if (action === 'edit-tx') {
       editTransaction(id);
     } else if (action === 'edit-inv') {
@@ -2008,8 +2016,19 @@ function getTotalSavingsInvestments() {
   return calcTotalAssets();
 }
 
+function calcCashFund() {
+  let inc = 0, exp = 0;
+  (DATA.transactions || []).forEach(t => {
+    if (t.type === 'income') inc += t.amount;
+    else exp += t.amount;
+  });
+  return inc - exp;
+}
+
 function calcTotalAssets() {
   let total = 0;
+  // Quỹ tiền mặt (cash ròng từ giao dịch)
+  total += calcCashFund();
   // Tiết kiệm: gốc + lãi tích lũy
   DATA.savings.forEach(s => { total += s.amount + calcAccruedInterest(s); });
   // Đầu tư (tài sản khác): giá thị trường hiện tại
@@ -2028,6 +2047,9 @@ function calcTotalAssets() {
 
 function calcAssetAllocation() {
   const alloc = {};
+  // Quỹ tiền mặt
+  const cashF = calcCashFund();
+  if (cashF > 0) alloc['cash'] = { name: 'Tiền mặt', amount: cashF, color: 'var(--gold)', colorDim: 'var(--gold-dim)' };
   // Tiết kiệm
   let savTotal = 0;
   DATA.savings.forEach(s => { savTotal += s.amount + calcAccruedInterest(s); });
@@ -2706,10 +2728,23 @@ function addSavings() {
   if (!term || term <= 0) { showToast('Vui lòng nhập kỳ hạn hợp lệ', 'error'); return; }
   if (!startDate) { showToast('Vui lòng chọn ngày gui', 'error'); return; }
 
-  DATA.savings.push({ id: uid(), bank, amount, rate, term, startDate });
+  const savingsId = uid();
+  // Auto-create linked expense: cash → savings (double-entry accounting)
+  const linkedTxId = uid();
+  DATA.transactions.push({
+    id: linkedTxId,
+    type: 'expense',
+    category: 'savings',
+    desc: `Gửi ${bank}`,
+    amount,
+    date: startDate,
+    person: selectedPerson || '',
+    linkedTo: { kind: 'savings', id: savingsId }
+  });
+  DATA.savings.push({ id: savingsId, bank, amount, rate, term, startDate, linkedTxId });
   saveLocal();
   renderAll();
-  showToast('Đã thêm sổ tiết kiệm', 'success');
+  showToast('Đã thêm sổ tiết kiệm (đã trừ khỏi quỹ tiền mặt)', 'success');
 
   document.getElementById('savBank').value = '';
   document.getElementById('savAmount').value = '';
@@ -2849,10 +2884,23 @@ function addInvestment() {
     const btn = document.getElementById('invSubmitBtn');
     if (btn) { btn.textContent = 'Thêm tài sản'; btn.style.background = ''; }
   } else {
-    DATA.investments.push({
-      id: uid(), name, type: selectedInvType, capital, currentValue, date
+    const invId = uid();
+    const linkedTxId = uid();
+    // Auto-create linked expense: cash → investment
+    DATA.transactions.push({
+      id: linkedTxId,
+      type: 'expense',
+      category: 'savings',
+      desc: `Mua ${name}`,
+      amount: capital,
+      date,
+      person: selectedPerson || '',
+      linkedTo: { kind: 'investment', id: invId }
     });
-    showToast('Đã thêm tài sản', 'success');
+    DATA.investments.push({
+      id: invId, name, type: selectedInvType, capital, currentValue, date, linkedTxId
+    });
+    showToast('Đã thêm tài sản (đã trừ khỏi quỹ tiền mặt)', 'success');
   }
   saveLocal();
   renderAll();
@@ -2869,9 +2917,25 @@ function addBrokerage() {
   const cash = parseMoney(document.getElementById('brkCash').value);
   if (!name) { showToast('Vui lòng nhập tên TKCK', 'error'); return; }
   DATA.brokerageAccounts = DATA.brokerageAccounts || [];
-  DATA.brokerageAccounts.push({ id: uid(), name, cashBalance: cash });
+  const brkId = uid();
+  let linkedTxId = null;
+  // If there's initial cash, deduct from cash fund
+  if (cash > 0) {
+    linkedTxId = uid();
+    DATA.transactions.push({
+      id: linkedTxId,
+      type: 'expense',
+      category: 'savings',
+      desc: `Nạp TKCK ${name}`,
+      amount: cash,
+      date: todayStr(),
+      person: selectedPerson || '',
+      linkedTo: { kind: 'brokerage', id: brkId }
+    });
+  }
+  DATA.brokerageAccounts.push({ id: brkId, name, cashBalance: cash, linkedTxId });
   saveLocal(); renderAll();
-  showToast('Đã thêm TKCK', 'success');
+  showToast(cash > 0 ? 'Đã thêm TKCK (đã trừ khỏi quỹ tiền mặt)' : 'Đã thêm TKCK', 'success');
   document.getElementById('brkName').value = '';
   document.getElementById('brkCash').value = '';
 }
@@ -2887,6 +2951,10 @@ function updateBrokerageCash(id) {
 }
 
 function deleteBrokerage(id) {
+  const brk = (DATA.brokerageAccounts || []).find(b => b.id === id);
+  if (brk && brk.linkedTxId) {
+    DATA.transactions = DATA.transactions.filter(t => t.id !== brk.linkedTxId);
+  }
   DATA.brokerageAccounts = (DATA.brokerageAccounts || []).filter(b => b.id !== id);
   saveLocal(); renderAll();
 }
@@ -3353,13 +3421,33 @@ function addREPayment(reId) {
 
   const re = (DATA.realEstates || []).find(r => r.id === reId);
   if (!re) return;
-  re.payments.push({ id: uid(), amount, date, note });
+  const pmtId = uid();
+  const linkedTxId = uid();
+  // Auto-create linked expense: cash → BĐS payment
+  DATA.transactions.push({
+    id: linkedTxId,
+    type: 'expense',
+    category: 'savings',
+    desc: `${re.name} - ${note || 'Đợt thanh toán'}`,
+    amount,
+    date,
+    person: selectedPerson || '',
+    linkedTo: { kind: 'payment', reId, pmtId }
+  });
+  re.payments.push({ id: pmtId, amount, date, note, linkedTxId });
   saveLocal();
   renderRealEstates();
   showToast('Đã thêm đợt thanh toán', 'success');
 }
 
 function deleteRealEstate(id) {
+  const re = (DATA.realEstates || []).find(r => r.id === id);
+  if (re) {
+    const linkedIds = (re.payments || []).map(p => p.linkedTxId).filter(Boolean);
+    if (linkedIds.length) {
+      DATA.transactions = DATA.transactions.filter(t => !linkedIds.includes(t.id));
+    }
+  }
   DATA.realEstates = (DATA.realEstates || []).filter(r => r.id !== id);
   saveLocal();
   renderAll();
@@ -3368,6 +3456,10 @@ function deleteRealEstate(id) {
 function deleteREPayment(reId, pmtId) {
   const re = (DATA.realEstates || []).find(r => r.id === reId);
   if (!re) return;
+  const pmt = (re.payments || []).find(p => p.id === pmtId);
+  if (pmt && pmt.linkedTxId) {
+    DATA.transactions = DATA.transactions.filter(t => t.id !== pmt.linkedTxId);
+  }
   re.payments = re.payments.filter(p => p.id !== pmtId);
   saveLocal();
   renderRealEstates();
@@ -3457,7 +3549,7 @@ function initAIPanel() {
       DATA.aiProvider = btn.dataset.provider;
       updateAIProviderUI();
       saveLocal();
-      showToast('Đã chuyển sang ' + (btn.dataset.provider === 'gemini' ? 'Gemini 2.5 Flash' : 'Claude Sonnet'), 'success');
+      showToast('Đã chuyển sang ' + (btn.dataset.provider === 'gemini' ? 'Gemini 2.5 Flash' : 'Claude Opus 4.5'), 'success');
     });
   });
   updateAIProviderUI();
@@ -3565,7 +3657,7 @@ async function callAI({ systemPrompt, userText, images, maxTokens, history }) {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-opus-4-5',
         max_tokens: maxTokens || 2048,
         system: systemPrompt,
         messages
