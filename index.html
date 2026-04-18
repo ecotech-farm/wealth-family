@@ -524,7 +524,7 @@ textarea.form-input{resize:vertical;min-height:60px}
           <label class="form-label">Ngày gửi</label>
           <input class="form-input" type="date" id="savStart" min="2020-01-01" max="2030-12-31">
         </div>
-        <button class="btn btn-gold btn-block" onclick="addSavings()">Thêm tiết kiệm</button>
+        <button class="btn btn-gold btn-block" id="savSubmitBtn" onclick="addSavings()">Thêm tiết kiệm</button>
       </div>
       <div id="savingsList"></div>
     </div>
@@ -662,7 +662,7 @@ textarea.form-input{resize:vertical;min-height:60px}
           <label class="form-label">Ghi chú</label>
           <input class="form-input" id="reNote" placeholder="VD: Block A, tầng 12...">
         </div>
-        <button type="button" class="btn btn-gold btn-block" onclick="addRealEstate()">Thêm BĐS</button>
+        <button type="button" class="btn btn-gold btn-block" id="reSubmitBtn" onclick="addRealEstate()">Thêm BĐS</button>
       </div>
       <div id="realEstateList"></div>
     </div>
@@ -846,6 +846,8 @@ let txType = 'expense';
 let selectedInvType = 'crypto';
 let editingInvId = null;
 let editingTxId = null;
+let editingSavId = null;
+let editingReId = null;
 let statsMonthOffset = 0;
 let statsPersonFilter = '';
 let supabasePullCompleted = false; // Safety: don't sync to Supabase until first pull completes
@@ -1813,8 +1815,12 @@ function initUI() {
       showToast('Đã xóa khoản đầu tư (hoàn tiền về quỹ)', 'success');
     } else if (action === 'edit-tx') {
       editTransaction(id);
+    } else if (action === 'edit-sav') {
+      editSavings(id);
     } else if (action === 'edit-inv') {
       editInvestment(id);
+    } else if (action === 'edit-re') {
+      editRealEstate(id);
     } else if (action === 'close-position') {
       closePosition(id);
     } else if (action === 'edit-stock-order') {
@@ -2699,6 +2705,7 @@ function renderSavings() {
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <span class="savings-status ${matured ? 'matured' : 'active'}">${matured ? 'Đáo hạn' : 'Đang gửi'}</span>
+          <button class="tx-del" data-action="edit-sav" data-id="${s.id}" style="color:var(--gold)" title="Sửa">&#9998;</button>
           <button class="tx-del" data-action="del-sav" data-id="${s.id}">&times;</button>
         </div>
       </div>
@@ -2726,28 +2733,60 @@ function addSavings() {
   if (!term || term <= 0) { showToast('Vui lòng nhập kỳ hạn hợp lệ', 'error'); return; }
   if (!startDate) { showToast('Vui lòng chọn ngày gui', 'error'); return; }
 
-  const savingsId = uid();
-  // Auto-create linked expense: cash → savings (double-entry accounting)
-  const linkedTxId = uid();
-  DATA.transactions.push({
-    id: linkedTxId,
-    type: 'expense',
-    category: 'savings',
-    desc: `Gửi ${bank}`,
-    amount,
-    date: startDate,
-    person: selectedPerson || '',
-    linkedTo: { kind: 'savings', id: savingsId }
-  });
-  DATA.savings.push({ id: savingsId, bank, amount, rate, term, startDate, linkedTxId });
+  if (editingSavId) {
+    const sav = DATA.savings.find(s => s.id === editingSavId);
+    if (sav) {
+      Object.assign(sav, { bank, amount, rate, term, startDate });
+      // Sync linked tx
+      if (sav.linkedTxId) {
+        const tx = DATA.transactions.find(t => t.id === sav.linkedTxId);
+        if (tx) { tx.amount = amount; tx.desc = `Gửi ${bank}`; tx.date = startDate; }
+      }
+    }
+    editingSavId = null;
+    const btn = document.getElementById('savSubmitBtn');
+    if (btn) { btn.textContent = 'Thêm tiết kiệm'; btn.style.background = ''; }
+    showToast('Đã cập nhật sổ tiết kiệm', 'success');
+  } else {
+    const savingsId = uid();
+    const linkedTxId = uid();
+    DATA.transactions.push({
+      id: linkedTxId, type: 'expense', category: 'savings',
+      desc: `Gửi ${bank}`, amount, date: startDate,
+      person: selectedPerson || '',
+      linkedTo: { kind: 'savings', id: savingsId }
+    });
+    DATA.savings.push({ id: savingsId, bank, amount, rate, term, startDate, linkedTxId });
+    showToast('Đã thêm sổ tiết kiệm (đã trừ khỏi quỹ tiền mặt)', 'success');
+  }
   saveLocal();
   renderAll();
-  showToast('Đã thêm sổ tiết kiệm (đã trừ khỏi quỹ tiền mặt)', 'success');
 
   document.getElementById('savBank').value = '';
   document.getElementById('savAmount').value = '';
   document.getElementById('savRate').value = '';
   document.getElementById('savTerm').value = '';
+}
+
+function editSavings(id) {
+  const sav = DATA.savings.find(s => s.id === id);
+  if (!sav) return;
+  document.getElementById('savBank').value = sav.bank;
+  document.getElementById('savAmount').value = formatMoney(sav.amount);
+  document.getElementById('savRate').value = sav.rate;
+  document.getElementById('savTerm').value = sav.term;
+  document.getElementById('savStart').value = sav.startDate;
+  editingSavId = id;
+  const btn = document.getElementById('savSubmitBtn');
+  if (btn) { btn.textContent = 'Cập nhật tiết kiệm'; btn.style.background = 'var(--blue)'; }
+  switchToPanel('invest');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const tabBtn = document.querySelector('.tab-btn[data-tab="savings"]');
+  if (tabBtn) tabBtn.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  const tab = document.getElementById('tab-savings');
+  if (tab) tab.classList.add('active');
+  setTimeout(() => document.getElementById('savBank').scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
 }
 
 // ===== INVESTMENTS =====
@@ -2876,6 +2915,11 @@ function addInvestment() {
     const inv = DATA.investments.find(i => i.id === editingInvId);
     if (inv) {
       Object.assign(inv, { name, type: selectedInvType, capital, currentValue, date });
+      // Sync linked tx if exists
+      if (inv.linkedTxId) {
+        const tx = DATA.transactions.find(t => t.id === inv.linkedTxId);
+        if (tx) { tx.amount = capital; tx.desc = `Mua ${name}`; tx.date = date; }
+      }
     }
     editingInvId = null;
     showToast('Đã cập nhật tài sản', 'success');
@@ -2943,9 +2987,26 @@ function updateBrokerageCash(id) {
   if (!input) return;
   const brk = (DATA.brokerageAccounts || []).find(b => b.id === id);
   if (!brk) return;
-  brk.cashBalance = parseMoney(input.value);
+  const newBalance = parseMoney(input.value);
+  const oldBalance = brk.cashBalance || 0;
+  const diff = newBalance - oldBalance;
+  brk.cashBalance = newBalance;
+  // Keep linked tx in sync (represents total amount of cash put into this brokerage)
+  if (brk.linkedTxId) {
+    const tx = DATA.transactions.find(t => t.id === brk.linkedTxId);
+    if (tx) tx.amount = newBalance;
+  } else if (newBalance > 0 && diff !== 0) {
+    // Create linked tx on first update
+    const txId = uid();
+    DATA.transactions.push({
+      id: txId, type: 'expense', category: 'savings',
+      desc: `Nạp TKCK ${brk.name}`, amount: newBalance, date: todayStr(),
+      person: '', linkedTo: { kind: 'brokerage', id: brk.id }
+    });
+    brk.linkedTxId = txId;
+  }
   saveLocal(); renderAll();
-  showToast('Đã cập nhật số dư', 'success');
+  showToast('Đã cập nhật số dư (đồng bộ với quỹ tiền mặt)', 'success');
 }
 
 function deleteBrokerage(id) {
@@ -3393,18 +3454,48 @@ function addRealEstate() {
   if (!totalValue) { showToast('Vui lòng nhập tổng giá trị hợp đồng', 'error'); return; }
 
   DATA.realEstates = DATA.realEstates || [];
-  DATA.realEstates.push({
-    id: uid(), name, totalValue, currentValue: currentValue || totalValue,
-    date, note, payments: []
-  });
+  if (editingReId) {
+    const re = DATA.realEstates.find(r => r.id === editingReId);
+    if (re) Object.assign(re, { name, totalValue, currentValue: currentValue || totalValue, date, note });
+    editingReId = null;
+    const btn = document.getElementById('reSubmitBtn');
+    if (btn) { btn.textContent = 'Thêm BĐS'; btn.style.background = ''; }
+    showToast('Đã cập nhật BĐS', 'success');
+  } else {
+    DATA.realEstates.push({
+      id: uid(), name, totalValue, currentValue: currentValue || totalValue,
+      date, note, payments: []
+    });
+    showToast('Đã thêm BĐS', 'success');
+  }
   saveLocal();
   renderAll();
-  showToast('Đã thêm BĐS', 'success');
 
   document.getElementById('reName').value = '';
   document.getElementById('reTotalValue').value = '';
   document.getElementById('reCurrentValue').value = '';
   document.getElementById('reNote').value = '';
+}
+
+function editRealEstate(id) {
+  const re = (DATA.realEstates || []).find(r => r.id === id);
+  if (!re) return;
+  document.getElementById('reName').value = re.name;
+  document.getElementById('reTotalValue').value = formatMoney(re.totalValue);
+  document.getElementById('reCurrentValue').value = formatMoney(re.currentValue);
+  document.getElementById('reDate').value = re.date;
+  document.getElementById('reNote').value = re.note || '';
+  editingReId = id;
+  const btn = document.getElementById('reSubmitBtn');
+  if (btn) { btn.textContent = 'Cập nhật BĐS'; btn.style.background = 'var(--blue)'; }
+  switchToPanel('invest');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const tabBtn = document.querySelector('.tab-btn[data-tab="realestate"]');
+  if (tabBtn) tabBtn.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  const tab = document.getElementById('tab-realestate');
+  if (tab) tab.classList.add('active');
+  setTimeout(() => document.getElementById('reName').scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
 }
 
 function addREPayment(reId) {
@@ -3490,7 +3581,10 @@ function renderRealEstates() {
     return `<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div class="card-title" style="margin-bottom:4px">${re.name}</div>
-        <button type="button" onclick="deleteRealEstate('${re.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.75rem">Xóa</button>
+        <div style="display:flex;gap:6px">
+          <button type="button" data-action="edit-re" data-id="${re.id}" style="background:none;border:none;color:var(--gold);cursor:pointer;font-size:.82rem">Sửa</button>
+          <button type="button" onclick="deleteRealEstate('${re.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.75rem">Xóa</button>
+        </div>
       </div>
       ${re.note ? `<div style="font-size:.75rem;color:var(--text3);margin-bottom:8px">${re.note}</div>` : ''}
       <div style="font-size:.82rem;color:var(--text2);margin-bottom:4px">
