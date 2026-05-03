@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WEALTH — Tài Chính Gia Đình Thông Minh</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -774,8 +773,8 @@ textarea.form-input{resize:vertical;min-height:60px}
 
 <script>
 // ===== CONSTANTS =====
-const SUPABASE_URL = 'https://sclgtpracvsmhnncepbe.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjbGd0cHJhY3ZzbWhubmNlcGJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNjI2NzgsImV4cCI6MjA4OTkzODY3OH0.nKVey_D6h3hqRQotUe3QeIIF68OLlC27ZC1VnAyljl8';
+// Firebase Realtime Database (free tier doesn't pause like Supabase free)
+const FIREBASE_URL = 'https://wealth-family-default-rtdb.asia-southeast1.firebasedatabase.app';
 
 const CATEGORIES = [
   { id: 'essential', name: 'Chi tiêu thiết yếu', color: 'var(--blue)', colorDim: 'var(--blue-dim)', min: 50, max: 55,
@@ -1361,23 +1360,17 @@ function guardianCheck() {
 
 // ===== AUTO CLOUD BACKUP (every save, silent) =====
 async function cloudBackupSilent() {
-  // Save a timestamped snapshot to Supabase under families_backup pattern
-  if (!supaClient || !DATA.settings.familyCode) return;
+  if (!DATA.settings.familyCode) return;
   if (!supabasePullCompleted) return;
-  // Check if data is non-empty
   const hasData = (DATA.transactions||[]).length > 0 ||
                   (DATA.savings||[]).length > 0 ||
                   (DATA.investments||[]).length > 0 ||
                   (DATA.realEstates||[]).length > 0;
   if (!hasData) return;
   try {
-    // Save snapshot with suffix id (acts as historical backup)
     const snapshotId = DATA.settings.familyCode + '_backup_' + new Date().toISOString().slice(0,10);
-    await supaClient.from('families').upsert({
-      id: snapshotId,
-      data: DATA,
-      updated_at: new Date().toISOString()
-    });
+    const url = FIREBASE_URL + '/families/' + encodeURIComponent(snapshotId) + '.json';
+    await fetch(url, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(DATA) });
   } catch(e) { /* silent */ }
 }
 
@@ -1409,30 +1402,19 @@ function renderBackupVersions() {
 }
 
 // ===== SUPABASE =====
+// Firebase REST API helpers
+let firebaseEventSource = null;
+
 function initSupabase() {
-  try {
-    supaClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    if (DATA.settings.familyCode) {
-      connectFamily(DATA.settings.familyCode);
-    } else {
-      // No family code = no sync needed, local-only mode is safe
-      supabasePullCompleted = true;
-    }
-    // Keep-alive ping: prevents Supabase free tier from pausing after 7 days
-    keepAliveSupabase();
-    setInterval(keepAliveSupabase, 6 * 60 * 60 * 1000); // every 6 hours
-  } catch(e) {
-    console.error('Supabase init error:', e);
+  // Renamed to keep call-sites working; now initializes Firebase
+  if (DATA.settings.familyCode) {
+    connectFamily(DATA.settings.familyCode);
+  } else {
+    supabasePullCompleted = true;
   }
 }
 
-async function keepAliveSupabase() {
-  if (!supaClient) return;
-  try {
-    // Lightweight query to keep project active (prevents 7-day auto-pause)
-    await supaClient.from('families').select('id').limit(1);
-  } catch(e) { /* silent - don't spam error if offline */ }
-}
+async function keepAliveSupabase() { /* not needed for Firebase free tier */ }
 
 // Merge two arrays by id: keeps all unique records, prefers local on id conflict
 function mergeById(local, remote) {
@@ -1442,109 +1424,85 @@ function mergeById(local, remote) {
   return Array.from(map.values());
 }
 
+// Apply remote payload to DATA with merge-by-id
+function applyRemoteData(remote) {
+  if (!remote) return;
+  DATA.transactions = mergeById(DATA.transactions || [], remote.transactions || []);
+  DATA.savings = mergeById(DATA.savings || [], remote.savings || []);
+  DATA.investments = mergeById(DATA.investments || [], remote.investments || []);
+  DATA.realEstates = mergeById(DATA.realEstates || [], remote.realEstates || []);
+  DATA.brokerageAccounts = mergeById(DATA.brokerageAccounts || [], remote.brokerageAccounts || []);
+  DATA.realizedPnL = mergeById(DATA.realizedPnL || [], remote.realizedPnL || []);
+  DATA.stockOrders = mergeById(DATA.stockOrders || [], remote.stockOrders || []);
+  DATA.stockPriceCache = { ...(DATA.stockPriceCache || {}), ...(remote.stockPriceCache || {}) };
+  if (remote.aiApiKey && !DATA.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
+  if (remote.aiProvider) DATA.aiProvider = remote.aiProvider;
+  if (remote.chatHistory && remote.chatHistory.length > (DATA.chatHistory || []).length) {
+    DATA.chatHistory = remote.chatHistory;
+    chatHistory = DATA.chatHistory;
+  }
+  if (remote.settings) {
+    DATA.settings.familyName = DATA.settings.familyName || remote.settings.familyName;
+    DATA.settings.monthlyIncome = DATA.settings.monthlyIncome || remote.settings.monthlyIncome;
+    DATA.settings.persons = (DATA.settings.persons && DATA.settings.persons.length) ? DATA.settings.persons : (remote.settings.persons || []);
+  }
+  localStorage.setItem('wealth_data', JSON.stringify(DATA));
+}
+
 async function connectFamily(code) {
-  if (!supaClient || !code) return;
+  if (!code) return;
   setSyncStatus('syncing', 'Đang kết nối...');
 
-  // Unsubscribe previous channel
-  if (realtimeChannel) {
-    supaClient.removeChannel(realtimeChannel);
-    realtimeChannel = null;
+  // Close any existing event source
+  if (firebaseEventSource) {
+    firebaseEventSource.close();
+    firebaseEventSource = null;
   }
 
   try {
-    // Load existing data
-    const { data, error } = await supaClient.from('families').select('data').eq('id', code).single();
-    if (data && data.data) {
-      // MERGE remote + local by ID (preserves any local records not in remote)
-      const remote = data.data;
-      DATA.transactions = mergeById(DATA.transactions || [], remote.transactions || []);
-      DATA.savings = mergeById(DATA.savings || [], remote.savings || []);
-      DATA.investments = mergeById(DATA.investments || [], remote.investments || []);
-      DATA.realEstates = mergeById(DATA.realEstates || [], remote.realEstates || []);
-      DATA.brokerageAccounts = mergeById(DATA.brokerageAccounts || [], remote.brokerageAccounts || []);
-      DATA.realizedPnL = mergeById(DATA.realizedPnL || [], remote.realizedPnL || []);
-      DATA.stockOrders = mergeById(DATA.stockOrders || [], remote.stockOrders || []);
-      DATA.stockPriceCache = { ...(DATA.stockPriceCache || {}), ...(remote.stockPriceCache || {}) };
-      if (remote.aiApiKey && !DATA.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
-      if (remote.aiProvider) DATA.aiProvider = remote.aiProvider;
-      if (remote.chatHistory && remote.chatHistory.length > (DATA.chatHistory || []).length) DATA.chatHistory = remote.chatHistory;
-      if (remote.settings) {
-        DATA.settings.familyName = DATA.settings.familyName || remote.settings.familyName;
-        DATA.settings.monthlyIncome = DATA.settings.monthlyIncome || remote.settings.monthlyIncome;
-        DATA.settings.persons = (DATA.settings.persons && DATA.settings.persons.length) ? DATA.settings.persons : (remote.settings.persons || []);
-      }
-      localStorage.setItem('wealth_data', JSON.stringify(DATA));
+    // Initial pull
+    const url = FIREBASE_URL + '/families/' + encodeURIComponent(code) + '.json';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const remote = await res.json();
+    if (remote && typeof remote === 'object') {
+      applyRemoteData(remote);
       renderAll();
       const keyInput = document.getElementById('aiApiKey');
       if (keyInput && DATA.aiApiKey) keyInput.value = DATA.aiApiKey;
     }
-    // Pull completed - safe to sync now
     supabasePullCompleted = true;
 
-    // Subscribe to realtime changes
-    realtimeChannel = supaClient
-      .channel('family-' + code)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'families',
-        filter: 'id=eq.' + code
-      }, (payload) => {
-        if (payload.new && payload.new.data) {
-          const remote = payload.new.data;
-          // MERGE to preserve any local records the other device hasn't seen yet
-          DATA.transactions = mergeById(DATA.transactions || [], remote.transactions || []);
-          DATA.savings = mergeById(DATA.savings || [], remote.savings || []);
-          DATA.investments = mergeById(DATA.investments || [], remote.investments || []);
-          DATA.realEstates = mergeById(DATA.realEstates || [], remote.realEstates || []);
-          DATA.brokerageAccounts = mergeById(DATA.brokerageAccounts || [], remote.brokerageAccounts || []);
-          DATA.realizedPnL = mergeById(DATA.realizedPnL || [], remote.realizedPnL || []);
-          DATA.stockOrders = mergeById(DATA.stockOrders || [], remote.stockOrders || []);
-          DATA.stockPriceCache = { ...(DATA.stockPriceCache || {}), ...(remote.stockPriceCache || {}) };
-          if (remote.aiApiKey && !DATA.aiApiKey) DATA.aiApiKey = remote.aiApiKey;
-      if (remote.aiProvider) DATA.aiProvider = remote.aiProvider;
-          if (remote.chatHistory && remote.chatHistory.length > (DATA.chatHistory || []).length) {
-            DATA.chatHistory = remote.chatHistory;
-            chatHistory = DATA.chatHistory;
-            renderChat();
-          }
-          if (remote.settings) {
-            DATA.settings.familyName = DATA.settings.familyName || remote.settings.familyName;
-            DATA.settings.monthlyIncome = DATA.settings.monthlyIncome || remote.settings.monthlyIncome;
-            if (!DATA.settings.persons || !DATA.settings.persons.length) DATA.settings.persons = remote.settings.persons || [];
-          }
-          localStorage.setItem('wealth_data', JSON.stringify(DATA));
+    // Realtime subscription via Server-Sent Events
+    firebaseEventSource = new EventSource(url);
+    firebaseEventSource.addEventListener('put', (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        // Top-level update sends path "/" with the full data object as `data`
+        if (msg.path === '/' && msg.data && typeof msg.data === 'object') {
+          applyRemoteData(msg.data);
           renderAll();
-          const keyInput = document.getElementById('aiApiKey');
-          if (keyInput && DATA.aiApiKey) keyInput.value = DATA.aiApiKey;
-          showToast('Dữ liệu đã được đồng bộ', 'success');
+          if (msg.data.chatHistory) renderChat();
         }
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          setSyncStatus('connected', 'Đã kết nối');
-        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          setSyncStatus('offline', 'Mất kết nối');
-        }
-      });
+      } catch(err) { console.error('Firebase event parse error:', err); }
+    });
+    firebaseEventSource.addEventListener('open', () => setSyncStatus('connected', 'Đã kết nối'));
+    firebaseEventSource.addEventListener('error', () => setSyncStatus('offline', 'Mất kết nối'));
+
+    setSyncStatus('connected', 'Đã kết nối');
   } catch(e) {
-    console.error('Connect error:', e);
+    console.error('Firebase connect error:', e);
     setSyncStatus('offline', 'Lỗi kết nối');
-    // DO NOT set supabasePullCompleted = true here.
-    // If pull fails, we don't want to accidentally overwrite remote data.
+    // Don't set supabasePullCompleted to avoid overwriting remote on failure
   }
 }
 
 async function syncToSupabase() {
-  if (!supaClient || !DATA.settings.familyCode) return;
-  // CRITICAL SAFETY: Don't sync until we've pulled from remote first.
-  // Prevents empty local data from overwriting remote data on fresh browser load.
+  if (!DATA.settings.familyCode) return;
   if (!supabasePullCompleted) {
     console.warn('Sync blocked: pull not completed yet');
     return;
   }
-  // CRITICAL SAFETY 2: Don't sync if all data is empty (likely fresh load with no data)
   const isEmpty = (DATA.transactions || []).length === 0 &&
                   (DATA.savings || []).length === 0 &&
                   (DATA.investments || []).length === 0 &&
@@ -1569,13 +1527,16 @@ async function syncToSupabase() {
       stockPriceCache: DATA.stockPriceCache || {},
       aiApiKey: DATA.aiApiKey,
       aiProvider: DATA.aiProvider || 'gemini',
-      chatHistory: DATA.chatHistory
-    };
-    await supaClient.from('families').upsert({
-      id: DATA.settings.familyCode,
-      data: payload,
+      chatHistory: DATA.chatHistory,
       updated_at: new Date().toISOString()
+    };
+    const url = FIREBASE_URL + '/families/' + encodeURIComponent(DATA.settings.familyCode) + '.json';
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     setSyncStatus('connected', 'Đã đồng bộ');
   } catch(e) {
     console.error('Sync error:', e);
@@ -3995,9 +3956,9 @@ function saveSettings() {
     supabasePullCompleted = false; // Reset: need to pull from new family first
     connectFamily(newCode);
   } else if (!newCode) {
-    if (realtimeChannel) {
-      supaClient.removeChannel(realtimeChannel);
-      realtimeChannel = null;
+    if (firebaseEventSource) {
+      firebaseEventSource.close();
+      firebaseEventSource = null;
     }
     setSyncStatus('offline', 'Chưa kết nối');
   }
